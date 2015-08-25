@@ -13,6 +13,7 @@ using Mono.Cecil.Cil;
 using Mono.Cecil.Mdb;
 using Mono.Cecil.Pdb;
 using Mono.Cecil.Rocks;
+using Mono.Collections.Generic;
 using FieldAttributes = Mono.Cecil.FieldAttributes;
 using ICustomAttributeProvider = Mono.Cecil.ICustomAttributeProvider;
 using MethodAttributes = Mono.Cecil.MethodAttributes;
@@ -107,7 +108,30 @@ namespace Shaspect.Builder
         private void ProcessMethod (MethodDefinition method, IEnumerable<AspectDeclaration> externalAspects)
         {
             var aspects = GetAspects (method, method.Module).Union (externalAspects);
+
+            foreach (var aspect in aspects)
+            {
+                if ((aspect.Aspect.AttributeType.Resolve().Attributes & TypeAttributes.NestedPrivate) == TypeAttributes.NestedPrivate)
+                    throw new ApplicationException (String.Format ("Aspect {0} must be declared as public or internal.", aspect.Aspect.AttributeType));
+
+                var aspectField = BuildAspectInitCode(aspect);
+
+                method.Body.Instructions.Insert (0,
+                    Instruction.Create (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnEntry"))));
+                method.Body.Instructions.Insert (0, Instruction.Create (OpCodes.Ldsfld, aspectField));
+                
+                ++emittedAspects;
+            }
+        }
+
+
+        private FieldDefinition BuildAspectInitCode (AspectDeclaration aspect)
+        {
             var ctor = colCtor.Body.Instructions;
+
+            var aspectField = new FieldDefinition ("Aspect_" + emittedAspects,
+                FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, aspect.Aspect.AttributeType);
+            colClass.Fields.Add (aspectField);
 
             // the IL code bellow is generated from:
 /*
@@ -124,80 +148,66 @@ namespace Shaspect.Builder
             Aspect_0= (Test1Attribute)GetMethodAttrInstance (methodInfo, typeof (Test1Attribute));
 */
 
-            foreach (var aspect in aspects)
+            ctor.Add (OpCodes.Ldtoken, aspect.Declarator.DeclaringType);
+            ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
+            ctor.Add (OpCodes.Ldstr, aspect.Declarator.Name);
+            ctor.Add (OpCodes.Ldc_I4,
+                (int) (BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
+            ctor.Add (OpCodes.Ldnull);
+
+            if (aspect.Declarator is PropertyReference)
             {
-                if ((aspect.Aspect.AttributeType.Resolve().Attributes & TypeAttributes.NestedPrivate) == TypeAttributes.NestedPrivate)
-                    throw new ApplicationException (String.Format ("Aspect {0} must be declared as public or internal.", aspect.Aspect.AttributeType));
-
-                var aspectField = new FieldDefinition ("Aspect_" + emittedAspects,
-                    FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, aspect.Aspect.AttributeType);
-                colClass.Fields.Add (aspectField);
-
-                ctor.Add (OpCodes.Ldtoken, aspect.Declarator.DeclaringType);
+                ctor.Add (OpCodes.Ldtoken, ((PropertyReference) aspect.Declarator).PropertyType);
                 ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-                ctor.Add (OpCodes.Ldstr, aspect.Declarator.Name);
-                ctor.Add (OpCodes.Ldc_I4, (int)(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
-                ctor.Add (OpCodes.Ldnull);
-
-                if (aspect.Declarator is PropertyReference)
-                {
-                    ctor.Add (OpCodes.Ldtoken, ((PropertyReference) aspect.Declarator).PropertyType);
-                    ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-                }
-                else
-                {
-                    ctor.Add (OpCodes.Ldc_I4, (int)CallingConventions.Any);
-                }
-
-                var memberParams = (aspect.Declarator is PropertyReference)
-                    ? ((PropertyReference) aspect.Declarator).Parameters
-                    : ((MethodReference) aspect.Declarator).Parameters;
-
-                ctor.Add (OpCodes.Ldc_I4, memberParams.Count);
-                ctor.Add (OpCodes.Newarr, mainModule.Import (typeof (Type)));
-                ctor.Add (OpCodes.Stloc_0);
-                ctor.Add (OpCodes.Ldloc_0);
-                
-                for (int i = 0; i < memberParams.Count; ++i)
-                {
-                    ctor.Add (OpCodes.Ldc_I4, i);
-                    ctor.Add (OpCodes.Ldtoken, memberParams[i].ParameterType);
-                    ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-                    ctor.Add (OpCodes.Stelem_Ref);
-                    ctor.Add (OpCodes.Ldloc_0);
-                }
-                
-                ctor.Add (OpCodes.Ldnull);
-                if (aspect.Declarator is PropertyReference)
-                {
-                    ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetProperty", new[]
-                    {
-                        typeof(string), typeof (BindingFlags), typeof(Binder), typeof (Type), typeof(Type[]), typeof (ParameterModifier[])
-                    })));
-                }
-                else
-                {
-                    ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetMethod", new[]
-                    {
-                        typeof(string), typeof (BindingFlags), typeof(Binder), typeof(CallingConventions), typeof(Type[]), typeof (ParameterModifier[])
-                    })));
-                }
-                
-
-                ctor.Add (OpCodes.Ldtoken, aspect.Aspect.AttributeType);
-                ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-
-                ctor.Add (OpCodes.Call, getMemberAttrInstanceMethod);
-                ctor.Add (OpCodes.Castclass, aspect.Aspect.AttributeType);
-                ctor.Add (OpCodes.Stsfld, aspectField);
-
-
-                method.Body.Instructions.Insert (0,
-                    Instruction.Create (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnEntry"))));
-                method.Body.Instructions.Insert (0, Instruction.Create (OpCodes.Ldsfld, aspectField));
-                
-                ++emittedAspects;
             }
+            else
+            {
+                ctor.Add (OpCodes.Ldc_I4, (int) CallingConventions.Any);
+            }
+
+            var memberParams = (aspect.Declarator is PropertyReference)
+                ? ((PropertyReference) aspect.Declarator).Parameters
+                : ((MethodReference) aspect.Declarator).Parameters;
+
+            ctor.Add (OpCodes.Ldc_I4, memberParams.Count);
+            ctor.Add (OpCodes.Newarr, mainModule.Import (typeof (Type)));
+            ctor.Add (OpCodes.Stloc_0);
+            ctor.Add (OpCodes.Ldloc_0);
+
+            for (int i = 0; i < memberParams.Count; ++i)
+            {
+                ctor.Add (OpCodes.Ldc_I4, i);
+                ctor.Add (OpCodes.Ldtoken, memberParams[i].ParameterType);
+                ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
+                ctor.Add (OpCodes.Stelem_Ref);
+                ctor.Add (OpCodes.Ldloc_0);
+            }
+
+            ctor.Add (OpCodes.Ldnull);
+            if (aspect.Declarator is PropertyReference)
+            {
+                ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetProperty", new[]
+                {
+                    typeof (string), typeof (BindingFlags), typeof (Binder), typeof (Type), typeof (Type[]),
+                    typeof (ParameterModifier[])
+                })));
+            }
+            else
+            {
+                ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetMethod", new[]
+                {
+                    typeof (string), typeof (BindingFlags), typeof (Binder), typeof (CallingConventions), typeof (Type[]),
+                    typeof (ParameterModifier[])
+                })));
+            }
+
+            ctor.Add (OpCodes.Ldtoken, aspect.Aspect.AttributeType);
+            ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
+
+            ctor.Add (OpCodes.Call, getMemberAttrInstanceMethod);
+            ctor.Add (OpCodes.Castclass, aspect.Aspect.AttributeType);
+            ctor.Add (OpCodes.Stsfld, aspectField);
+            return aspectField;
         }
 
 
