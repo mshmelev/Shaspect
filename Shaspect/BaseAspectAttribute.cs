@@ -5,8 +5,7 @@ namespace Shaspect
 {
     [AttributeUsage (AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Constructor |
                      AttributeTargets.Method | AttributeTargets.Property)]
-    // TODO: make abstract
-    public class BaseAspectAttribute : Attribute
+    public abstract class BaseAspectAttribute : Attribute
     {
         public virtual void OnEntry()
         {
@@ -26,5 +25,8 @@ namespace Shaspect
         public virtual void OnExit()
         {
         }
+
+
+        public ElementTargets ElementTargets { get; set; }
     }
 }

@@ -50,13 +50,14 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AspectDeclaration.cs" />
+    <Compile Include="AspectsInjector.cs" />
+    <Compile Include="AssemblyResolver.cs" />
     <Compile Include="ILTools.cs" />
+    <Compile Include="InitClassGenerator.cs" />
     <Compile Include="ShaspectBuildTask.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -76,7 +77,15 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy $(TargetDir)*.dll $(SolutionDir)Libs\ /Y
-copy $(TargetDir)ShaspectBuild.targets $(SolutionDir)Libs\ /Y</PostBuildEvent>
+if errorlevel 1 goto BuildEventFailed
+
+copy $(TargetDir)ShaspectBuild.targets $(SolutionDir)Libs\ /Y
+if errorlevel 1 goto BuildEventFailed
+exit 0
+
+:BuildEventFailed
+exit 1
+</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

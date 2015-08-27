@@ -6,6 +6,6 @@ namespace Shaspect.Builder
     internal class AspectDeclaration
     {
         public CustomAttribute Aspect { get; set; }
-        public IMemberDefinition Declarator { get; set; }
+        public ICustomAttributeProvider Declarator { get; set; }
     }
 }

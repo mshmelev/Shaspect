@@ -1,15 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\xunit.runner.visualstudio.2.0.1\build\net20\xunit.runner.visualstudio.props" Condition="Exists('..\packages\xunit.runner.visualstudio.2.0.1\build\net20\xunit.runner.visualstudio.props')" />
   <Import Project="..\packages\xunit.core.2.0.0\build\portable-net45+win+wpa81+wp80+monotouch+monoandroid+Xamarin.iOS\xunit.core.props" Condition="Exists('..\packages\xunit.core.2.0.0\build\portable-net45+win+wpa81+wp80+monotouch+monoandroid+Xamarin.iOS\xunit.core.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{F5AA6824-ABA4-4C4E-8D47-EEC981455C9B}</ProjectGuid>
+    <ProjectGuid>{F0BB5CF7-E52D-44FC-8121-14D70BD04072}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Shaspect.Tests</RootNamespace>
-    <AssemblyName>Shaspect.Tests</AssemblyName>
+    <RootNamespace>Shaspect.AssemblyTests</RootNamespace>
+    <AssemblyName>Shaspect.AssemblyTests</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -18,7 +17,7 @@
     <ReferencePath>$(ProgramFiles)\Common Files\microsoft shared\VSTT\$(VisualStudioVersion)\UITestExtensionPackages</ReferencePath>
     <IsCodedUITest>False</IsCodedUITest>
     <TestProjectType>UnitTest</TestProjectType>
-    <NuGetPackageImportStamp>0f8903a0</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>41365f6a</NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -38,10 +37,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="NSubstitute, Version=1.8.2.0, Culture=neutral, PublicKeyToken=92dd2e9066daa5ca, processorArchitecture=MSIL">
-      <HintPath>..\packages\NSubstitute.1.8.2.0\lib\net45\NSubstitute.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="xunit.abstractions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=8d05b1bb7a6fdb6c, processorArchitecture=MSIL">
       <HintPath>..\packages\xunit.abstractions.2.0.0\lib\net35\xunit.abstractions.dll</HintPath>
@@ -65,19 +60,17 @@
     <Otherwise />
   </Choose>
   <ItemGroup>
-    <Compile Include="AspectInitTests.cs" />
-    <Compile Include="NestedAspectsTest.cs" />
+    <Compile Include="AssemlyAspectTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="OnEntryBasicTests.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Shaspect\Shaspect.csproj">
-      <Project>{8021ABEA-621F-403F-8FA2-BC8DBBA50298}</Project>
-      <Name>Shaspect</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Shaspect\Shaspect.csproj">
+      <Project>{8021abea-621f-403f-8fa2-bc8dbba50298}</Project>
+      <Name>Shaspect</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
@@ -105,7 +98,6 @@
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\xunit.core.2.0.0\build\portable-net45+win+wpa81+wp80+monotouch+monoandroid+Xamarin.iOS\xunit.core.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\xunit.core.2.0.0\build\portable-net45+win+wpa81+wp80+monotouch+monoandroid+Xamarin.iOS\xunit.core.props'))" />
-    <Error Condition="!Exists('..\packages\xunit.runner.visualstudio.2.0.1\build\net20\xunit.runner.visualstudio.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\xunit.runner.visualstudio.2.0.1\build\net20\xunit.runner.visualstudio.props'))" />
   </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
