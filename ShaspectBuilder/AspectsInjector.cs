@@ -30,7 +30,7 @@ namespace Shaspect.Builder
         {
             LoadAssembly();
             
-            var assemblyAspects = GetAspects (assembly, assembly.MainModule);
+            var assemblyAspects = Enumerable.Empty<AspectDeclaration>().NestWith (GetAspects (assembly, assembly.MainModule));
             initClassGenerator = new InitClassGenerator (assembly);
 
             foreach (var module in assembly.Modules)
@@ -43,13 +43,13 @@ namespace Shaspect.Builder
                     if (IsInheritedFrom (type, baseAspectType))       // ignore aspects themselves
                         continue;
 
-                    var typeAspects = GetAspects (type, module).Union (assemblyAspects);
+                    var typeAspects = assemblyAspects.NestWith (GetAspects (type, module));
                     var processedMethods = new HashSet<uint>();
 
                     // properties
                     foreach (var property in type.Properties)
                     {
-                        var propAspects = GetAspects (property, module).Union (typeAspects);
+                        var propAspects = typeAspects.NestWith (GetAspects (property, module));
                         if (property.GetMethod != null)
                         {
                             ProcessMethod (property.GetMethod, propAspects);
@@ -82,7 +82,7 @@ namespace Shaspect.Builder
 
         private void ProcessMethod (MethodDefinition method, IEnumerable<AspectDeclaration> externalAspects)
         {
-            var aspects = GetAspects (method, method.Module).Union (externalAspects);
+            var aspects = externalAspects.NestWith (GetAspects (method, method.Module));
 
             foreach (var aspect in aspects)
             {
@@ -103,7 +103,7 @@ namespace Shaspect.Builder
 
         private bool IsApplicableElementTarget (MethodDefinition method, AspectDeclaration aspect)
         {
-            var elemetTargets = GetAspectElementTargets (aspect.Aspect);
+            var elemetTargets = aspect.ElementTargets;
             if (elemetTargets == ElementTargets.Default)
                 return true;
 
@@ -122,18 +122,6 @@ namespace Shaspect.Builder
             }
 
             return true;
-        }
-
-
-        private ElementTargets GetAspectElementTargets (CustomAttribute aspect)
-        {
-            foreach (var prop in aspect.Properties)
-            {
-                if (prop.Name == "ElementTargets")
-                    return (ElementTargets) prop.Argument.Value;
-            }
-
-            return ElementTargets.Default;
         }
 
 

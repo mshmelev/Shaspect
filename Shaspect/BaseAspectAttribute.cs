@@ -27,6 +27,15 @@ namespace Shaspect
         }
 
 
+        /// <summary>
+        /// Specifies element types on which the aspect should be applied.
+        /// </summary>
         public ElementTargets ElementTargets { get; set; }
+
+
+        /// <summary>
+        /// Whether to exclude this aspect from an element.
+        /// </summary>
+        public bool Exclude { get; set; }
     }
 }

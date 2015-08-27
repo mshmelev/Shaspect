@@ -31,14 +31,13 @@ namespace Shaspect.Builder
                         AssemblyFile);
                 }
 
-                // TODO: on class level
-                // TODO: nesting (with overwriting) on assembly/class/method/(get/set property) levels
                 // TODO: passing arguments, return value
-                // TODO: specifying targets (properties, methods). Now done only for ctor.
-                // TODO: specifying targets by name (Namespace1.Namespace2.Class.*).
+                // TODO: specifying targets (properties, methods). Now done only for ctor. Don't forget about Exclude.
+                // TODO: specifying targets by name (Namespace1.Namespace2.Class.*). Don't forget about Exclude.
+                // TODO: Implement priorities (cut-through across all the nesting levels). Don't forget about Exclude.
                 // TODO: inheritance
                 // TODO: interfaces
-                // TODO: aspect in a referenced assembly (assembly resolver)
+                // TODO: aspect in a referenced assembly (assembly resolver); resolving using configuration from app.config
                 // TODO: handle signed assemblies
                 // TODO: aspect on parameters (e.g. check parameter is not null)
                 // TODO: optimize performance of the Builder
