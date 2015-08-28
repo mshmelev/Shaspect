@@ -21,7 +21,7 @@ namespace Shaspect.Tests
             }
 
 
-            public override void OnEntry()
+            public override void OnEntry(MethodExecInfo methodExecInfo)
             {
                 callsBag.Add (callName);
             }
@@ -134,6 +134,15 @@ namespace Shaspect.Tests
             }
         }
 
+        static class TestStaticClass
+        {
+            [SimpleAspect ("StaticClass_StaticMethod")]
+            public static void StaticMethod ()
+            {
+            }
+        }
+
+
 
         [Fact]
         public void OnEntryIsCalled()
@@ -158,6 +167,14 @@ namespace Shaspect.Tests
         {
             TestClass.StaticMethod();
             Assert.True (callsBag.Contains ("StaticMethod"));
+        }
+
+
+        [Fact]
+        public void StaticMethodInStaticClass()
+        {
+            TestStaticClass.StaticMethod();
+            Assert.True (callsBag.Contains ("StaticClass_StaticMethod"));
         }
 
 

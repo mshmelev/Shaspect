@@ -7,6 +7,7 @@ using Mono.Cecil.Cil;
 using Mono.Cecil.Mdb;
 using Mono.Cecil.Pdb;
 using Mono.Cecil.Rocks;
+using Mono.Collections.Generic;
 
 
 namespace Shaspect.Builder
@@ -35,7 +36,7 @@ namespace Shaspect.Builder
 
             foreach (var module in assembly.Modules)
             {
-                var types = module.GetAllTypes().Where (t => t.IsClass && !t.IsAbstract);
+                var types = module.GetAllTypes().Where (t => t.IsClass && !t.IsCompilerGenerated());
                 var baseAspectType = module.Import (typeof (BaseAspectAttribute));
 
                 foreach (var type in types)
@@ -94,10 +95,43 @@ namespace Shaspect.Builder
 
                 var aspectField = initClassGenerator.BuildAspectInitCode (aspect);
 
-                method.Body.Instructions.Insert (0,
-                    Instruction.Create (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnEntry"))));
-                method.Body.Instructions.Insert (0, Instruction.Create (OpCodes.Ldsfld, aspectField));
+                InjectAspectBehavior(method, aspectField);
             }
+        }
+
+
+        private static void InjectAspectBehavior (MethodDefinition method, FieldDefinition aspectField)
+        {
+            // TODO: OnEntry should be called only in the case OnEntry is overridden somewhere in descendants of BaseAspectAttribute
+            // The code below is IL generated from:
+            // AspectsCollection.Aspect_x.OnEntry (new MethodExecInfo (new object[] {param1, param2, ...}));
+            var argsArrVar = new VariableDefinition (method.Module.Import (typeof (object[])));
+            method.Body.Variables.Add (argsArrVar);
+
+            var inj = new Collection<Instruction>();
+            inj.Add (OpCodes.Ldsfld, aspectField);
+            inj.Add (OpCodes.Ldc_I4, method.Parameters.Count);
+            inj.Add (OpCodes.Newarr, method.Module.Import (typeof (object)));
+            inj.Add (OpCodes.Stloc, argsArrVar);
+            inj.Add (OpCodes.Ldloc, argsArrVar);
+
+            for (int i = 0; i < method.Parameters.Count; ++i)
+            {
+                inj.Add (OpCodes.Ldc_I4, i);
+                inj.Add (OpCodes.Ldarg, method.Parameters[i]);
+                if (method.Parameters[i].ParameterType.IsValueType)
+                    inj.Add (OpCodes.Box, method.Parameters[i].ParameterType);
+                inj.Add (OpCodes.Stelem_Ref);
+                inj.Add (OpCodes.Ldloc, argsArrVar);
+            }
+
+            inj.Add (OpCodes.Newobj, method.Module.Import (typeof (MethodExecInfo).GetConstructor (new[] {typeof (object[])})));
+            inj.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnEntry")));
+
+            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+
+            method.Body.Instructions.Insert (0, inj);
+            method.Body.OptimizeMacros (firstInstruction);
         }
 
 

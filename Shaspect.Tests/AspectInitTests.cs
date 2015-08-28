@@ -90,7 +90,7 @@ namespace Shaspect.Tests
             }
 
 
-            public override void OnEntry()
+            public override void OnEntry(MethodExecInfo methodExecInfo)
             {
                 callsBag.Add (sb);
                 callsBag.Add (b);

@@ -2,6 +2,7 @@
 using System.Linq;
 using Xunit;
 
+// needs to be applied on whole assembly and every nested class to check it works correctly even on compiler generated classes
 [assembly: Shaspect.AssemblyTests.AssemlyAspectTests.SimpleAspect ("AssemblyAspect", ElementTargets = Shaspect.ElementTargets.Method)]
 
 namespace Shaspect.AssemblyTests
@@ -22,7 +23,7 @@ namespace Shaspect.AssemblyTests
             }
 
 
-            public override void OnEntry()
+            public override void OnEntry(MethodExecInfo methodExecInfo)
             {
                 callsBag.Add (callName);
             }

@@ -61,6 +61,7 @@
     <Compile Include="InitClassGenerator.cs" />
     <Compile Include="ShaspectBuildTask.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TypeTools.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

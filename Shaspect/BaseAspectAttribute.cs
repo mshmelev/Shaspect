@@ -7,7 +7,7 @@ namespace Shaspect
                      AttributeTargets.Method | AttributeTargets.Property)]
     public abstract class BaseAspectAttribute : Attribute
     {
-        public virtual void OnEntry()
+        public virtual void OnEntry(MethodExecInfo methodExecInfo)
         {
         }
 
