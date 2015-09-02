@@ -50,6 +50,13 @@ namespace Shaspect.Tests
             {
                 return i + "_" + b + "_" + l + "_" + f + "_" + d + "_" + s;
             }
+
+
+            public void OutArgs (int i, string s, out int io, out string so)
+            {
+                io = i;
+                so = s;
+            }
         }
 
         private readonly TestClass t;
@@ -124,6 +131,21 @@ namespace Shaspect.Tests
             Assert.Equal (2, argsBag.Count);
             Assert.Equal (t, argsBag[0]);
             Assert.Equal ("qqq", argsBag[1]);
+        }
+
+
+        [Fact]
+        public void OutArgument()
+        {
+            int i;
+            string s;
+            t.OutArgs (42, "qqq", out i, out s);
+
+            Assert.Equal (4, argsBag.Count);
+            Assert.Equal (default (int), argsBag[2]);
+            Assert.Equal (default (string), argsBag[3]);
+            Assert.Equal (42, i);
+            Assert.Equal ("qqq", s);
         }
     }
 
