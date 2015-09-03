@@ -273,5 +273,48 @@ namespace Shaspect.Builder
             instruction.OpCode = opcode;
             instruction.Operand = null;
         }
+
+
+        /// <summary>
+        /// Returns Ldind instruction specific to the passed type.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static Instruction GetLdindOpCode (TypeReference type)
+        {
+            if (type.IsValueType)
+            {
+                switch (type.MetadataType)
+                {
+                    case MetadataType.Boolean:
+                        return Instruction.Create (OpCodes.Ldind_I1);
+                    case MetadataType.Char:
+                        return Instruction.Create (OpCodes.Ldind_U2);
+                    case MetadataType.SByte:
+                        return Instruction.Create (OpCodes.Ldind_I1);
+                    case MetadataType.Byte:
+                        return Instruction.Create (OpCodes.Ldind_U1);
+                    case MetadataType.Int16:
+                        return Instruction.Create (OpCodes.Ldind_I2);
+                    case MetadataType.UInt16:
+                        return Instruction.Create (OpCodes.Ldind_U2);
+                    case MetadataType.Int32:
+                        return Instruction.Create (OpCodes.Ldind_I4);
+                    case MetadataType.UInt32:
+                        return Instruction.Create (OpCodes.Ldind_U4);
+                    case MetadataType.Int64:
+                    case MetadataType.UInt64:
+                        return Instruction.Create (OpCodes.Ldind_I8);
+                    case MetadataType.Single:
+                        return Instruction.Create (OpCodes.Ldind_R4);
+                    case MetadataType.Double:
+                        return Instruction.Create (OpCodes.Ldind_R8);
+                    case MetadataType.ValueType:
+                       return Instruction.Create (OpCodes.Ldobj, type);
+                }
+            }
+
+            return Instruction.Create (OpCodes.Ldind_Ref);
+        }
     }
 }

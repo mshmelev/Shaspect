@@ -117,10 +117,21 @@ namespace Shaspect.Builder
 
             for (int i = 0; i < method.Parameters.Count; ++i)
             {
+                var param = method.Parameters[i];
+                var paramType = param.ParameterType;
+
                 inj.Add (OpCodes.Ldc_I4, i);
-                inj.Add (OpCodes.Ldarg, method.Parameters[i]);
-                if (method.Parameters[i].ParameterType.IsValueType)
-                    inj.Add (OpCodes.Box, method.Parameters[i].ParameterType);
+                inj.Add (OpCodes.Ldarg, param);
+
+                if (paramType is ByReferenceType)
+                {
+                    paramType = ((ByReferenceType)paramType).ElementType;
+                    inj.Add (ILTools.GetLdindOpCode (paramType));
+                }
+
+                if (paramType.IsValueType)
+                    inj.Add (OpCodes.Box, paramType);
+
                 inj.Add (OpCodes.Stelem_Ref);
                 inj.Add (OpCodes.Ldloc, argsArrVar);
             }

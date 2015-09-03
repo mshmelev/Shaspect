@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Shaspect.Tests
 {
-    public class NestedAspectsTest : IDisposable
+    public sealed class NestedAspectsTest : IDisposable
     {
         private static readonly object sync = new object();
         private static readonly HashSet<string> callsBag= new HashSet<string>();

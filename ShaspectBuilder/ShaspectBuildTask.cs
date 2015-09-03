@@ -31,9 +31,10 @@ namespace Shaspect.Builder
                         AssemblyFile);
                 }
 
-                // TODO: ref and out arguments
                 // TODO: return value
                 // TODO: return value with yield
+                // TODO: properties: passing and returning value
+                // TODO: dynamic arguments and returns
                 // TODO: OnInit for aspects
                 // TODO: implement OnSuccess, OnException, OnExit
                 // TODO: specifying targets (properties, methods). Now done only for ctor. Don't forget about Exclude.
