@@ -8,6 +8,7 @@ using Mono.Cecil.Mdb;
 using Mono.Cecil.Pdb;
 using Mono.Cecil.Rocks;
 using Mono.Collections.Generic;
+using Shaspect.Builder.Tools;
 
 
 namespace Shaspect.Builder

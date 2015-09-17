@@ -57,14 +57,14 @@
   <ItemGroup>
     <Compile Include="AspectDeclaration.cs" />
     <Compile Include="AspectsInjector.cs" />
-    <Compile Include="CollectionExtensions.cs" />
+    <Compile Include="Tools\CollectionExtensions.cs" />
     <Compile Include="NestingStrategy.cs" />
-    <Compile Include="AssemblyResolver.cs" />
-    <Compile Include="ILTools.cs" />
+    <Compile Include="Tools\AssemblyResolver.cs" />
+    <Compile Include="Tools\ILTools.cs" />
     <Compile Include="InitClassGenerator.cs" />
     <Compile Include="ShaspectBuildTask.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TypeTools.cs" />
+    <Compile Include="Tools\TypeTools.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -79,6 +79,7 @@
       <Name>Shaspect</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>copy $(TargetDir)*.dll $(SolutionDir)Libs\ /Y

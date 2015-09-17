@@ -1,7 +1,7 @@
 ﻿using Mono.Cecil;
 
 
-namespace Shaspect.Builder
+namespace Shaspect.Builder.Tools
 {
     internal class AssemblyResolver : DefaultAssemblyResolver
     {

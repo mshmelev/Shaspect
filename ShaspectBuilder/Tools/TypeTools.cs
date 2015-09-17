@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using Mono.Cecil;
 
 
-namespace Shaspect.Builder
+namespace Shaspect.Builder.Tools
 {
     internal static class TypeTools
     {

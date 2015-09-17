@@ -31,7 +31,6 @@ namespace Shaspect.Builder
                         AssemblyFile);
                 }
 
-                // TODO: return value with yield
                 // TODO: return value changing (args.SetReturnValue(...))
                 // TODO: generics as arguments and returning values
                 // TODO: test aspect on static and instance constructors (they're compiled differently)
@@ -48,6 +47,8 @@ namespace Shaspect.Builder
                 // TODO: optimize performance of the Builder
                 // TODO: process only once (check if there's Shaspect.Implementation namespace there
                 // TODO: support changing of method arguments (something like args.SetArgument (0, "12345") )
+                // TODO: support async methods
+                // TODO: support aspects on each yield return (now it's only supported as returning of IEnumerable<T> in return value)
 
                 stopwatch.Stop();
                 Log.LogMessage ("ShaspectBuildTask took {0}ms", stopwatch.ElapsedMilliseconds);

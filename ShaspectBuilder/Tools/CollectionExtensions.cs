@@ -1,7 +1,7 @@
 ﻿using Mono.Collections.Generic;
 
 
-namespace Shaspect.Builder
+namespace Shaspect.Builder.Tools
 {
     internal static class CollectionExtensions
     {
