@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Xunit;
 
@@ -32,25 +34,25 @@ namespace Shaspect.Tests
 
             public byte ByteReturn (byte b)
             {
-                return (byte)(b + 1);
+                return (byte) (b + 1);
             }
 
 
             public sbyte SByteReturn (sbyte b)
             {
-                return (sbyte)(b + 1);
+                return (sbyte) (b + 1);
             }
 
 
             public short ShortReturn (short b)
             {
-                return (short)(b + 1);
+                return (short) (b + 1);
             }
 
 
             public ushort UShortReturn (ushort b)
             {
-                return (ushort)(b + 1);
+                return (ushort) (b + 1);
             }
 
 
@@ -62,7 +64,8 @@ namespace Shaspect.Tests
 
             public uint UIntReturn (uint i)
             {
-                return i + 1;;
+                return i + 1;
+                ;
             }
 
 
@@ -74,7 +77,8 @@ namespace Shaspect.Tests
 
             public ulong ULongReturn (ulong i)
             {
-                return i + 1;;
+                return i + 1;
+                ;
             }
 
 
@@ -92,7 +96,7 @@ namespace Shaspect.Tests
 
             public char CharReturn (char c)
             {
-                return (char)(c + 1);
+                return (char) (c + 1);
             }
 
 
@@ -107,7 +111,7 @@ namespace Shaspect.Tests
                 return t;
             }
 
-            
+
             public int[] ArrayReturn (int a, int b, int c)
             {
                 return new[] {a, b, c};
@@ -120,6 +124,12 @@ namespace Shaspect.Tests
             }
 
 
+            public T GenericReturn<T> (T i)
+            {
+                return i;
+            }
+
+
             public void VoidFunction()
             {
                 var d = DateTime.Now;
@@ -129,8 +139,8 @@ namespace Shaspect.Tests
 
             public int ThrowsException (string s)
             {
-                if (s== null)
-                    throw new ArgumentNullException("s");
+                if (s == null)
+                    throw new ArgumentNullException ("s");
                 return 42;
             }
         }
@@ -162,22 +172,22 @@ namespace Shaspect.Tests
         public void ValueTypes_Returned()
         {
             Assert.Equal (3, t.ByteReturn (2));
-            Assert.Equal ((byte)3, returnRes);
+            Assert.Equal ((byte) 3, returnRes);
 
             Assert.Equal (5, t.SByteReturn (4));
-            Assert.Equal ((sbyte)5, returnRes);
+            Assert.Equal ((sbyte) 5, returnRes);
 
             Assert.Equal (7, t.ShortReturn (6));
-            Assert.Equal ((short)7, returnRes);
+            Assert.Equal ((short) 7, returnRes);
 
             Assert.Equal (9, t.UShortReturn (8));
-            Assert.Equal ((ushort)9, returnRes);
+            Assert.Equal ((ushort) 9, returnRes);
 
             Assert.Equal (11, t.IntReturn (10));
             Assert.Equal (11, returnRes);
 
-            Assert.Equal ((uint)13, t.UIntReturn (12));
-            Assert.Equal ((uint)13, returnRes);
+            Assert.Equal ((uint) 13, t.UIntReturn (12));
+            Assert.Equal ((uint) 13, returnRes);
 
             Assert.Equal (15L, t.LongReturn (14));
             Assert.Equal (15L, returnRes);
@@ -185,8 +195,8 @@ namespace Shaspect.Tests
             Assert.Equal (17UL, t.ULongReturn (16));
             Assert.Equal (17UL, returnRes);
 
-            Assert.Equal ((float)19.1, t.FloatReturn ((float)18.1));
-            Assert.Equal ((float)19.1, returnRes);
+            Assert.Equal ((float) 19.1, t.FloatReturn ((float) 18.1));
+            Assert.Equal ((float) 19.1, returnRes);
 
             Assert.Equal (21.1, t.DoubleReturn (20.1));
             Assert.Equal (21.1, returnRes);
@@ -199,7 +209,7 @@ namespace Shaspect.Tests
         [Fact]
         public void Struct_Returned()
         {
-            t.StructReturn (new DateTime (2017, 11, 7));
+            Assert.Equal (new DateTime (2018, 11, 7), t.StructReturn (new DateTime (2017, 11, 7)));
             Assert.Equal (new DateTime (2018, 11, 7), returnRes);
         }
 
@@ -207,7 +217,7 @@ namespace Shaspect.Tests
         [Fact]
         public void ReferenceTypes_Returned()
         {
-            t.ReferenceTypeReturn (t);
+            Assert.Same (t, t.ReferenceTypeReturn (t));
             Assert.Same (t, returnRes);
         }
 
@@ -215,7 +225,7 @@ namespace Shaspect.Tests
         [Fact]
         public void Array_Returned()
         {
-            t.ArrayReturn (42, 43, 44);
+            Assert.Equal (new[] {42, 43, 44}, t.ArrayReturn (42, 43, 44));
             Assert.Equal (new[] {42, 43, 44}, returnRes);
         }
 
@@ -224,7 +234,18 @@ namespace Shaspect.Tests
         public void DynamicTypes_Returned()
         {
             t.DynamicTypeReturn (42);
-            Assert.Equal (42, ((dynamic)returnRes).A);
+            Assert.Equal (42, ((dynamic) returnRes).A);
+        }
+
+
+        [Fact]
+        public void Generic_Returned()
+        {
+            Assert.Equal (42, t.GenericReturn (42));
+            Assert.Equal (42, returnRes);
+
+            Assert.Equal ("a", t.GenericReturn ("a"));
+            Assert.Equal ("a", returnRes);
         }
 
 
@@ -254,6 +275,5 @@ namespace Shaspect.Tests
                 Assert.Equal ("notChanged", returnRes);
             }
         }
-
     }
 }

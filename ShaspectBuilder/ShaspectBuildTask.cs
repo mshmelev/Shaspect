@@ -32,10 +32,9 @@ namespace Shaspect.Builder
                 }
 
                 // TODO: return value changing (args.SetReturnValue(...))
-                // TODO: generics as arguments and returning values
-                // TODO: test aspect on static and instance constructors (they're compiled differently)
                 // TODO: OnInit for aspects
                 // TODO: implement OnException, OnExit
+                // TODO: test aspect on static and instance constructors (they're compiled differently and OnEnter can be called differently)
                 // TODO: specifying targets (properties, methods). Now done only for ctor. Don't forget about Exclude.
                 // TODO: specifying targets by name (Namespace1.Namespace2.Class.*). Don't forget about Exclude.
                 // TODO: Implement priorities (cut-through across all the nesting levels). Don't forget about Exclude.

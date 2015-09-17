@@ -81,6 +81,13 @@ namespace Shaspect.Tests
                 ref double d, ref char c, ref uint[] uiArr, ref string str, ref DateTime dt)
             {
             }
+
+
+            public void GenericArgs<T> (T a, out T b, ref T c)
+            {
+                b = default(T);
+                c = default(T);
+            }
         }
 
         private readonly TestClass t;
@@ -240,6 +247,27 @@ namespace Shaspect.Tests
             Assert.Equal (new uint[] {1, 2, 3}, argsBag[13]);
             Assert.Equal ("quba", argsBag[14]);
             Assert.Equal (new DateTime (1945, 5, 9), argsBag[15]);
+        }
+
+
+        [Fact]
+        public void GenericArguments()
+        {
+            int b, c = 43;
+            t.GenericArgs (42, out b, ref c);
+            Assert.Equal (42, argsBag[0]);
+            Assert.Equal (0, argsBag[1]);
+            Assert.Equal (43, argsBag[2]);
+            Assert.Equal (0, c);
+
+            argsBag.Clear();
+
+            string s1, s2 = "z";
+            t.GenericArgs ("x", out s1, ref s2);
+            Assert.Equal ("x", argsBag[0]);
+            Assert.Equal (null, argsBag[1]);
+            Assert.Equal ("z", argsBag[2]);
+            Assert.Equal (null, s2);
         }
     }
 

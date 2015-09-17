@@ -241,7 +241,7 @@ namespace Shaspect.Builder
                     code.Add (ILTools.GetLdindOpCode (paramType));
                 }
 
-                if (paramType.IsValueType)
+                if (paramType.IsValueType || paramType.IsGenericParameter)
                     code.Add (OpCodes.Box, paramType);
 
                 code.Add (OpCodes.Stelem_Ref);
@@ -304,7 +304,7 @@ namespace Shaspect.Builder
                 // methodExecInfo.ReturnValue = returnVar;
                 methodCode.Add (retInitInstr);
                 methodCode.Add (OpCodes.Ldloc, returnVar);
-                if (returnVar.VariableType.IsValueType)
+                if (returnVar.VariableType.IsValueType || returnVar.VariableType.IsGenericParameter)
                     methodCode.Add (OpCodes.Box, returnVar.VariableType);
                 methodCode.Add (OpCodes.Callvirt,  method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").SetMethod));
 
