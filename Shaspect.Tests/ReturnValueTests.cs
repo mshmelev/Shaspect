@@ -30,9 +30,69 @@ namespace Shaspect.Tests
             }
 
 
-            public int ValueTypeReturn (int a, int b)
+            public byte ByteReturn (byte b)
             {
-                return a + b;
+                return (byte)(b + 1);
+            }
+
+
+            public sbyte SByteReturn (sbyte b)
+            {
+                return (sbyte)(b + 1);
+            }
+
+
+            public short ShortReturn (short b)
+            {
+                return (short)(b + 1);
+            }
+
+
+            public ushort UShortReturn (ushort b)
+            {
+                return (ushort)(b + 1);
+            }
+
+
+            public int IntReturn (int i)
+            {
+                return i + 1;
+            }
+
+
+            public uint UIntReturn (uint i)
+            {
+                return i + 1;;
+            }
+
+
+            public long LongReturn (long i)
+            {
+                return i + 1;
+            }
+
+
+            public ulong ULongReturn (ulong i)
+            {
+                return i + 1;;
+            }
+
+
+            public double DoubleReturn (double d)
+            {
+                return d + 1;
+            }
+
+
+            public float FloatReturn (float f)
+            {
+                return f + 1;
+            }
+
+
+            public char CharReturn (char c)
+            {
+                return (char)(c + 1);
             }
 
 
@@ -45,6 +105,12 @@ namespace Shaspect.Tests
             public TestClass ReferenceTypeReturn (TestClass t)
             {
                 return t;
+            }
+
+            
+            public int[] ArrayReturn (int a, int b, int c)
+            {
+                return new[] {a, b, c};
             }
 
 
@@ -87,16 +153,46 @@ namespace Shaspect.Tests
         [Fact]
         public void SimpleReturn_Test()
         {
-            t.SimpleReturn (42);
+            Assert.Equal ("42", t.SimpleReturn (42));
             Assert.Equal ("42", returnRes);
         }
 
 
         [Fact]
-        public void ValueType_Returned()
+        public void ValueTypes_Returned()
         {
-            t.ValueTypeReturn (42, 7);
-            Assert.Equal (42 + 7, returnRes);
+            Assert.Equal (3, t.ByteReturn (2));
+            Assert.Equal ((byte)3, returnRes);
+
+            Assert.Equal (5, t.SByteReturn (4));
+            Assert.Equal ((sbyte)5, returnRes);
+
+            Assert.Equal (7, t.ShortReturn (6));
+            Assert.Equal ((short)7, returnRes);
+
+            Assert.Equal (9, t.UShortReturn (8));
+            Assert.Equal ((ushort)9, returnRes);
+
+            Assert.Equal (11, t.IntReturn (10));
+            Assert.Equal (11, returnRes);
+
+            Assert.Equal ((uint)13, t.UIntReturn (12));
+            Assert.Equal ((uint)13, returnRes);
+
+            Assert.Equal (15L, t.LongReturn (14));
+            Assert.Equal (15L, returnRes);
+
+            Assert.Equal (17UL, t.ULongReturn (16));
+            Assert.Equal (17UL, returnRes);
+
+            Assert.Equal ((float)19.1, t.FloatReturn ((float)18.1));
+            Assert.Equal ((float)19.1, returnRes);
+
+            Assert.Equal (21.1, t.DoubleReturn (20.1));
+            Assert.Equal (21.1, returnRes);
+
+            Assert.Equal ('b', t.CharReturn ('a'));
+            Assert.Equal ('b', returnRes);
         }
 
 
@@ -113,6 +209,14 @@ namespace Shaspect.Tests
         {
             t.ReferenceTypeReturn (t);
             Assert.Same (t, returnRes);
+        }
+
+
+        [Fact]
+        public void Array_Returned()
+        {
+            t.ArrayReturn (42, 43, 44);
+            Assert.Equal (new[] {42, 43, 44}, returnRes);
         }
 
 
