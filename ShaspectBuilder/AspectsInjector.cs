@@ -100,49 +100,219 @@ namespace Shaspect.Builder
         }
 
 
+        /// <summary>
+        /// Modifies the passed method so it looks like:
+        /// <code>
+        ///     BaseAspectAttribute.OnEntry (methodExecInfo);
+        ///     try
+        ///     {
+        ///         try
+        ///         {
+        ///             // Original method code, without return instructions
+        ///         }
+        ///         catch (Exception ex)
+        ///         {
+        ///             BaseAspectAttribute.OnException (methodExecInfo);
+        ///             throw;
+        ///         }
+        ///         BaseAspectAttribute.OnSuccess (methodExecInfo);
+        ///     }
+        ///     finally
+        ///     {
+        ///         BaseAspectAttribute.OnExit (methodExecInfo);
+        ///     }
+        ///     return result;          // single return instruction
+        /// </code>
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="aspectField"></param>
         private static void InjectAspectBehavior (MethodDefinition method, FieldDefinition aspectField)
         {
+            var methodCode = method.Body.Instructions;
+            var firstInstruction = methodCode.FirstOrDefault();
+
+            var methodExecInfoVar= InitMethodExecInfoVar (method);
+
+            // TODO: should not be called if OnSuccess/OnExit are not called below
+            var retInstr= MakeOneReturn (method, methodExecInfoVar);
+
             // TODO: OnEntry should be called only in the case OnEntry is overridden somewhere in descendants of BaseAspectAttribute
+            CallOnEntry (method, methodExecInfoVar, aspectField, methodCode.IndexOf (firstInstruction));
+
+            CallOnSuccess (method, methodExecInfoVar, aspectField, methodCode.LastIndexOf (retInstr));
+
+            methodCode.Insert (methodCode.LastIndexOf (retInstr), Instruction.Create (OpCodes.Leave, retInstr));        // needed to correctly get to finally section
+            var finallyCode = new Collection<Instruction>();
+            finallyCode.Add (OpCodes.Endfinally);              // TODO: add BaseAspectAttribute.OnExit call
+            methodCode.Insert (methodCode.LastIndexOf (retInstr), finallyCode);
+
+            method.Body.ExceptionHandlers.Add (new ExceptionHandler (ExceptionHandlerType.Finally)
+            {
+                TryStart = firstInstruction,
+                TryEnd = finallyCode.First(),
+                HandlerStart = finallyCode.First(),
+                HandlerEnd = finallyCode.Last().Next
+            });
+
+            method.Body.OptimizeMacros();
+        }
+
+
+        private static void CallOnEntry (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
+        {
             // The code below is IL generated from:
-            // AspectsCollection.Aspect_x.OnEntry (new MethodExecInfo (new object[] {param1, param2, ...}));
+            // AspectsCollection.Aspect_x.OnEntry (methodExecInfo);
+            var code = new Collection<Instruction>();
+            code.Add (OpCodes.Ldsfld, aspectField);
+            code.Add (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnEntry")));
+
+            method.Body.Instructions.Insert (offset, code);
+        }
+
+
+        private static void CallOnSuccess (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
+        {
+            // The code below is IL generated from:
+            // AspectsCollection.Aspect_x.OnSuccess (methodExecInfo);
+            var code = new Collection<Instruction>();
+            code.Add (OpCodes.Ldsfld, aspectField);
+            code.Add (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnSuccess")));
+
+            method.Body.Instructions.Insert (offset, code);
+        }
+
+
+        private static void CallOnExit (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
+        {
+            // The code below is IL generated from:
+            // AspectsCollection.Aspect_x.OnSuccess (methodExecInfo);
+            var code = new Collection<Instruction>();
+            code.Add (OpCodes.Ldsfld, aspectField);
+            code.Add (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnExit")));
+
+            method.Body.Instructions.Insert (offset, code);
+        }
+
+
+        private static void CallOnException (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
+        {
+            // The code below is IL generated from:
+            // AspectsCollection.Aspect_x.OnSuccess (methodExecInfo);
+            var code = new Collection<Instruction>();
+            code.Add (OpCodes.Ldsfld, aspectField);
+            code.Add (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnException")));
+
+            method.Body.Instructions.Insert (offset, code);
+        }
+
+
+        private static VariableDefinition InitMethodExecInfoVar (MethodDefinition method)
+        {
+            // The code below is IL generated from:
+            // var methodExecInfo = new MethodExecInfo (new object[] {param1, param2, ...})
             var argsArrVar = new VariableDefinition (method.Module.Import (typeof (object[])));
             method.Body.Variables.Add (argsArrVar);
 
-            var inj = new Collection<Instruction>();
-            inj.Add (OpCodes.Ldsfld, aspectField);
-            inj.Add (OpCodes.Ldc_I4, method.Parameters.Count);
-            inj.Add (OpCodes.Newarr, method.Module.Import (typeof (object)));
-            inj.Add (OpCodes.Stloc, argsArrVar);
-            inj.Add (OpCodes.Ldloc, argsArrVar);
+            var execInfoVar = new VariableDefinition (method.Module.Import (typeof (MethodExecInfo)));
+            method.Body.Variables.Add (execInfoVar);
+
+            var code = new Collection<Instruction>();
+            code.Add (OpCodes.Ldc_I4, method.Parameters.Count);
+            code.Add (OpCodes.Newarr, method.Module.Import (typeof (object)));
+            code.Add (OpCodes.Stloc, argsArrVar);
+            code.Add (OpCodes.Ldloc, argsArrVar);
 
             for (int i = 0; i < method.Parameters.Count; ++i)
             {
                 var param = method.Parameters[i];
                 var paramType = param.ParameterType;
 
-                inj.Add (OpCodes.Ldc_I4, i);
-                inj.Add (OpCodes.Ldarg, param);
+                code.Add (OpCodes.Ldc_I4, i);
+                code.Add (OpCodes.Ldarg, param);
 
                 if (paramType is ByReferenceType)
                 {
-                    paramType = ((ByReferenceType)paramType).ElementType;
-                    inj.Add (ILTools.GetLdindOpCode (paramType));
+                    paramType = ((ByReferenceType) paramType).ElementType;
+                    code.Add (ILTools.GetLdindOpCode (paramType));
                 }
 
                 if (paramType.IsValueType)
-                    inj.Add (OpCodes.Box, paramType);
+                    code.Add (OpCodes.Box, paramType);
 
-                inj.Add (OpCodes.Stelem_Ref);
-                inj.Add (OpCodes.Ldloc, argsArrVar);
+                code.Add (OpCodes.Stelem_Ref);
+                code.Add (OpCodes.Ldloc, argsArrVar);
             }
 
-            inj.Add (OpCodes.Newobj, method.Module.Import (typeof (MethodExecInfo).GetConstructor (new[] {typeof (object[])})));
-            inj.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnEntry")));
+            code.Add (OpCodes.Newobj, method.Module.Import (typeof (MethodExecInfo).GetConstructor (new[] {typeof (object[])})));
+            code.Add (OpCodes.Stloc, execInfoVar);
 
-            var firstInstruction = method.Body.Instructions.FirstOrDefault();
+            method.Body.Instructions.Insert (0, code);
 
-            method.Body.Instructions.Insert (0, inj);
-            method.Body.OptimizeMacros (firstInstruction);
+            return execInfoVar;
+        }
+
+
+        /// <summary>
+        /// Substitute multiple returns in a method with one return instruction at the end
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="methodExecInfoVar"></param>
+        private static Instruction MakeOneReturn (MethodDefinition method, VariableDefinition methodExecInfoVar)
+        {
+            method.Body.SimplifyMacros();          // required since we are inserting instructions and old "short" instructions (like jump short) could become not short anymore
+            
+            var methodCode= method.Body.Instructions;
+            Instruction retInstr;
+
+            if (method.ReturnType == method.Module.TypeSystem.Void)
+            {
+                retInstr = Instruction.Create (OpCodes.Ret);
+                var retPlacehldrInstr = Instruction.Create (OpCodes.Nop);       // placeholder where any additional code could be inserted before the actual return instruction
+
+                for (int i = 0; i < methodCode.Count; ++i)
+                {
+                    if (methodCode[i].OpCode == OpCodes.Ret)
+                        methodCode[i].ReplaceOpCode (OpCodes.Leave, retPlacehldrInstr);
+                }
+                methodCode.Add (retPlacehldrInstr);
+                methodCode.Add (retInstr);
+            }
+            else
+            {
+                var returnVar = new VariableDefinition (method.ReturnType);
+                method.Body.Variables.Add (returnVar);
+
+                retInstr = Instruction.Create (OpCodes.Ldloc, returnVar);
+                var retInitInstr = Instruction.Create (OpCodes.Ldloc, methodExecInfoVar);
+
+                for (int i = 0; i < methodCode.Count; ++i)
+                {
+                    if (methodCode[i].OpCode == OpCodes.Ret)
+                    {
+                        methodCode[i].ReplaceOpCode (OpCodes.Leave, retInitInstr);
+                        methodCode.Insert (i, Instruction.Create (OpCodes.Stloc, returnVar));
+                        ++i;
+                    }
+                }
+
+                // TODO this code should not be emitted in the case an unhandled exception was thrown by method (in this case execInfoVar is unitialized and CLR will throw an exception)
+                // methodExecInfo.ReturnValue = returnVar;
+                methodCode.Add (retInitInstr);
+                methodCode.Add (OpCodes.Ldloc, returnVar);
+                if (returnVar.VariableType.IsValueType)
+                    methodCode.Add (OpCodes.Box, returnVar.VariableType);
+                methodCode.Add (OpCodes.Callvirt,  method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").SetMethod));
+
+                // return returnVar;
+                methodCode.Add (retInstr);
+                methodCode.Add (OpCodes.Ret);
+            }
+
+            return retInstr;
         }
 
 

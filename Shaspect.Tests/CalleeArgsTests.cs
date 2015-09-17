@@ -9,7 +9,7 @@ namespace Shaspect.Tests
     public sealed class CalleeArgsTests : IDisposable
     {
         private static readonly object sync = new object();
-        private static readonly List<object> argsBag= new List<object>();
+        private static readonly List<object> argsBag = new List<object>();
 
 
         /// <summary>
@@ -21,8 +21,8 @@ namespace Shaspect.Tests
             {
                 lock (sync)
                 {
-                    foreach (object argument in methodExecInfo.Arguments)
-                    argsBag.Add (argument);
+                    foreach (var argument in methodExecInfo.Arguments)
+                        argsBag.Add (argument);
                 }
             }
         }
@@ -35,21 +35,25 @@ namespace Shaspect.Tests
             {
             }
 
+
             public string SimpleArgs (string s)
             {
-                int i = 2;          // some local var
+                var i = 2; // some local var
                 ++i;
                 return s + i;
             }
+
 
             public void DefaultArgs (string s, string s2 = "pr2")
             {
             }
 
+
             public string ComplexArgs (int i, byte b, long l, float f, double d, string s, uint[] arr, TestClass t, DateTime dt, dynamic dy)
             {
                 return i + "_" + b + "_" + l + "_" + f + "_" + d + "_" + s;
             }
+
 
             public void OutArgs (int ii, string ss,
                 out sbyte sb, out byte b, out short s, out ushort us, out int i, out uint ui, out long l, out ulong ul, out float f,
@@ -66,7 +70,7 @@ namespace Shaspect.Tests
                 f = 1;
                 d = 1;
                 c = '1';
-                uiArr = new uint[]{1};
+                uiArr = new uint[] {1};
                 str = "1";
                 dt = DateTime.Now;
             }
@@ -86,7 +90,7 @@ namespace Shaspect.Tests
         {
             t = new TestClass();
             Monitor.Enter (sync);
-            argsBag.Clear();       // there's already something from ctor of TestClass
+            argsBag.Clear(); // there's already something from ctor of TestClass
         }
 
 
@@ -107,7 +111,7 @@ namespace Shaspect.Tests
         [Fact]
         public void SimpleMethod_Args()
         {
-            Assert.Equal ("pr3", t.SimpleArgs("pr"));
+            Assert.Equal ("pr3", t.SimpleArgs ("pr"));
             Assert.Equal (1, argsBag.Count);
             Assert.Equal ("pr", argsBag[0]);
         }
@@ -128,21 +132,22 @@ namespace Shaspect.Tests
             Assert.Equal ("pr2_m", argsBag[1]);
         }
 
+
         [Fact]
         public void BoxingArgs()
         {
-            Assert.Equal ("1_2_3_4.5_5.6_qqq", t.ComplexArgs (1, 2, 3L, 4.5f, 5.6, "qqq", new uint[]{42, 43}, t, new DateTime(2017, 11, 7), new {qq= 42}));
+            Assert.Equal ("1_2_3_4.5_5.6_qqq", t.ComplexArgs (1, 2, 3L, 4.5f, 5.6, "qqq", new uint[] {42, 43}, t, new DateTime (2017, 11, 7), new {qq = 42}));
             Assert.Equal (10, argsBag.Count);
             Assert.Equal (1, argsBag[0]);
-            Assert.Equal ((byte)2, argsBag[1]);
+            Assert.Equal ((byte) 2, argsBag[1]);
             Assert.Equal (3L, argsBag[2]);
             Assert.Equal (4.5f, argsBag[3]);
             Assert.Equal (5.6, argsBag[4]);
             Assert.Equal ("qqq", argsBag[5]);
-            Assert.Equal (new uint[]{42, 43}, argsBag[6]);
+            Assert.Equal (new uint[] {42, 43}, argsBag[6]);
             Assert.Equal (t, argsBag[7]);
-            Assert.Equal (new DateTime(2017, 11, 7), argsBag[8]);
-            Assert.Equal (new {qq=42}, argsBag[9]);
+            Assert.Equal (new DateTime (2017, 11, 7), argsBag[8]);
+            Assert.Equal (new {qq = 42}, argsBag[9]);
         }
 
 
@@ -180,20 +185,20 @@ namespace Shaspect.Tests
 
             Assert.Equal (42, argsBag[0]);
             Assert.Equal ("qqq", argsBag[1]);
-            Assert.Equal (default (sbyte), argsBag[2]);
-            Assert.Equal (default (byte), argsBag[3]);
-            Assert.Equal (default (short), argsBag[4]);
-            Assert.Equal (default (ushort), argsBag[5]);
-            Assert.Equal (default (int), argsBag[6]);
-            Assert.Equal (default (uint), argsBag[7]);
-            Assert.Equal (default (long), argsBag[8]);
-            Assert.Equal (default (ulong), argsBag[9]);
-            Assert.Equal (default (float), argsBag[10]);
-            Assert.Equal (default (double), argsBag[11]);
-            Assert.Equal (default (char), argsBag[12]);
-            Assert.Equal (default (uint[]), argsBag[13]);
-            Assert.Equal (default (string), argsBag[14]);
-            Assert.Equal (default (DateTime), argsBag[15]);
+            Assert.Equal (default(sbyte), argsBag[2]);
+            Assert.Equal (default(byte), argsBag[3]);
+            Assert.Equal (default(short), argsBag[4]);
+            Assert.Equal (default(ushort), argsBag[5]);
+            Assert.Equal (default(int), argsBag[6]);
+            Assert.Equal (default(uint), argsBag[7]);
+            Assert.Equal (default(long), argsBag[8]);
+            Assert.Equal (default(ulong), argsBag[9]);
+            Assert.Equal (default(float), argsBag[10]);
+            Assert.Equal (default(double), argsBag[11]);
+            Assert.Equal (default(char), argsBag[12]);
+            Assert.Equal (default(uint[]), argsBag[13]);
+            Assert.Equal (default(string), argsBag[14]);
+            Assert.Equal (default(DateTime), argsBag[15]);
         }
 
 
@@ -204,16 +209,16 @@ namespace Shaspect.Tests
             byte b = 2;
             short s = 3;
             ushort us = 4;
-            int i = 5;
+            var i = 5;
             uint ui = 6;
             long l = 7;
             ulong ul = 8;
-            float f = 9.1f;
-            double d = 10.2;
-            char c = 'f';
+            var f = 9.1f;
+            var d = 10.2;
+            var c = 'f';
             uint[] uiArr = {1, 2, 3};
-            string str = "quba";
-            DateTime dt = new DateTime (1945, 5, 9);
+            var str = "quba";
+            var dt = new DateTime (1945, 5, 9);
 
             t.RefArgs (42, "qqq", ref sb, ref b, ref s, ref us, ref i, ref ui, ref l, ref ul, ref f, ref d, ref c, ref uiArr, ref str, ref dt);
 
@@ -221,29 +226,28 @@ namespace Shaspect.Tests
 
             Assert.Equal (42, argsBag[0]);
             Assert.Equal ("qqq", argsBag[1]);
-            Assert.Equal ((sbyte)1, argsBag[2]);
-            Assert.Equal ((byte)2, argsBag[3]);
-            Assert.Equal ((short)3, argsBag[4]);
-            Assert.Equal ((ushort)4, argsBag[5]);
+            Assert.Equal ((sbyte) 1, argsBag[2]);
+            Assert.Equal ((byte) 2, argsBag[3]);
+            Assert.Equal ((short) 3, argsBag[4]);
+            Assert.Equal ((ushort) 4, argsBag[5]);
             Assert.Equal (5, argsBag[6]);
-            Assert.Equal ((uint)6, argsBag[7]);
+            Assert.Equal ((uint) 6, argsBag[7]);
             Assert.Equal (7L, argsBag[8]);
-            Assert.Equal ((ulong)8, argsBag[9]);
+            Assert.Equal ((ulong) 8, argsBag[9]);
             Assert.Equal (9.1f, argsBag[10]);
             Assert.Equal (10.2, argsBag[11]);
             Assert.Equal ('f', argsBag[12]);
-            Assert.Equal (new uint[]{1,2,3}, argsBag[13]);
+            Assert.Equal (new uint[] {1, 2, 3}, argsBag[13]);
             Assert.Equal ("quba", argsBag[14]);
             Assert.Equal (new DateTime (1945, 5, 9), argsBag[15]);
         }
     }
 
-    static class TestArgsStaticClass
+    internal static class TestArgsStaticClass
     {
         [CalleeArgsTests.SimpleAspectAttribute]
         public static void ThisParam (this CalleeArgsTests.TestClass t, string s)
         {
         }
     }
-
 }

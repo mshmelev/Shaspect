@@ -31,22 +31,23 @@ namespace Shaspect.Builder
                         AssemblyFile);
                 }
 
-                // TODO: return value
                 // TODO: return value with yield
-                // TODO: properties: passing and returning value
-                // TODO: dynamic arguments and returns
+                // TODO: return value changing (args.SetReturnValue(...))
+                // TODO: generics as arguments and returning values
+                // TODO: test aspect on static and instance constructors (they're compiled differently)
                 // TODO: OnInit for aspects
-                // TODO: implement OnSuccess, OnException, OnExit
+                // TODO: implement OnException, OnExit
                 // TODO: specifying targets (properties, methods). Now done only for ctor. Don't forget about Exclude.
                 // TODO: specifying targets by name (Namespace1.Namespace2.Class.*). Don't forget about Exclude.
                 // TODO: Implement priorities (cut-through across all the nesting levels). Don't forget about Exclude.
                 // TODO: inheritance
-                // TODO: interfaces
+                // TODO: aspect on interfaces
                 // TODO: aspect in a referenced assembly (assembly resolver); resolving using configuration from app.config
                 // TODO: handle signed assemblies
                 // TODO: aspect on parameters (e.g. check parameter is not null)
                 // TODO: optimize performance of the Builder
                 // TODO: process only once (check if there's Shaspect.Implementation namespace there
+                // TODO: support changing of method arguments (something like args.SetArgument (0, "12345") )
 
                 stopwatch.Stop();
                 Log.LogMessage ("ShaspectBuildTask took {0}ms", stopwatch.ElapsedMilliseconds);

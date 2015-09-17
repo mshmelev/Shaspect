@@ -104,6 +104,13 @@ namespace Shaspect.Builder
         }
 
 
+        public static void Add (this Collection<Instruction> coll, Collection<Instruction> instructions)
+        {
+            foreach (var instruction in instructions)
+                coll.Add (instruction);
+        }
+
+
         public static void Insert (this Collection<Instruction> coll, int index, Collection<Instruction> instructions)
         {
             foreach (var instruction in instructions)
@@ -111,167 +118,17 @@ namespace Shaspect.Builder
         }
 
 
-
         /// <summary>
-        /// 
+        /// Replaces OpCode and Operand leaving instruction reference untouched.
+        /// Useful when instruction is referred to from other places.
         /// </summary>
-        /// <param name="self"></param>
-        /// <param name="untilInstruction">where to stop optimization</param>
-        public static void OptimizeMacros (this MethodBody self, Instruction untilInstruction = null)
+        /// <param name="instr"></param>
+        /// <param name="opCode"></param>
+        /// <param name="operand"></param>
+        public static void ReplaceOpCode (this Instruction instr, OpCode opCode, object operand)
         {
-            if (self == null)
-                throw new ArgumentNullException ("self");
-
-            var method = self.Method;
-
-            foreach (var instruction in self.Instructions)
-            {
-                if (instruction == untilInstruction)
-                    break;
-
-                int index;
-                switch (instruction.OpCode.Code)
-                {
-                    case Code.Ldarg:
-                        index = ((ParameterDefinition) instruction.Operand).Index;
-                        if (index == -1 && instruction.Operand == self.ThisParameter)
-                            index = 0;
-                        else if (method.HasThis)
-                            index++;
-
-                        switch (index)
-                        {
-                            case 0:
-                                MakeMacro (instruction, OpCodes.Ldarg_0);
-                                break;
-                            case 1:
-                                MakeMacro (instruction, OpCodes.Ldarg_1);
-                                break;
-                            case 2:
-                                MakeMacro (instruction, OpCodes.Ldarg_2);
-                                break;
-                            case 3:
-                                MakeMacro (instruction, OpCodes.Ldarg_3);
-                                break;
-                            default:
-                                if (index < 256)
-                                    ExpandMacro (instruction, OpCodes.Ldarg_S, instruction.Operand);
-                                break;
-                        }
-                        break;
-                    case Code.Ldloc:
-                        index = ((VariableDefinition) instruction.Operand).Index;
-                        switch (index)
-                        {
-                            case 0:
-                                MakeMacro (instruction, OpCodes.Ldloc_0);
-                                break;
-                            case 1:
-                                MakeMacro (instruction, OpCodes.Ldloc_1);
-                                break;
-                            case 2:
-                                MakeMacro (instruction, OpCodes.Ldloc_2);
-                                break;
-                            case 3:
-                                MakeMacro (instruction, OpCodes.Ldloc_3);
-                                break;
-                            default:
-                                if (index < 256)
-                                    ExpandMacro (instruction, OpCodes.Ldloc_S, instruction.Operand);
-                                break;
-                        }
-                        break;
-                    case Code.Stloc:
-                        index = ((VariableDefinition) instruction.Operand).Index;
-                        switch (index)
-                        {
-                            case 0:
-                                MakeMacro (instruction, OpCodes.Stloc_0);
-                                break;
-                            case 1:
-                                MakeMacro (instruction, OpCodes.Stloc_1);
-                                break;
-                            case 2:
-                                MakeMacro (instruction, OpCodes.Stloc_2);
-                                break;
-                            case 3:
-                                MakeMacro (instruction, OpCodes.Stloc_3);
-                                break;
-                            default:
-                                if (index < 256)
-                                    ExpandMacro (instruction, OpCodes.Stloc_S, instruction.Operand);
-                                break;
-                        }
-                        break;
-                    case Code.Ldarga:
-                        index = ((ParameterDefinition) instruction.Operand).Index;
-                        if (index == -1 && instruction.Operand == self.ThisParameter)
-                            index = 0;
-                        else if (method.HasThis)
-                            index++;
-                        if (index < 256)
-                            ExpandMacro (instruction, OpCodes.Ldarga_S, instruction.Operand);
-                        break;
-                    case Code.Ldloca:
-                        if (((VariableDefinition) instruction.Operand).Index < 256)
-                            ExpandMacro (instruction, OpCodes.Ldloca_S, instruction.Operand);
-                        break;
-                    case Code.Ldc_I4:
-                        var i = (int) instruction.Operand;
-                        switch (i)
-                        {
-                            case -1:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_M1);
-                                break;
-                            case 0:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_0);
-                                break;
-                            case 1:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_1);
-                                break;
-                            case 2:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_2);
-                                break;
-                            case 3:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_3);
-                                break;
-                            case 4:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_4);
-                                break;
-                            case 5:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_5);
-                                break;
-                            case 6:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_6);
-                                break;
-                            case 7:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_7);
-                                break;
-                            case 8:
-                                MakeMacro (instruction, OpCodes.Ldc_I4_8);
-                                break;
-                            default:
-                                if (i >= -128 && i < 128)
-                                    ExpandMacro (instruction, OpCodes.Ldc_I4_S, (sbyte) i);
-                                break;
-                        }
-                        break;
-                }
-            }
-        }
-
-
-        private static void ExpandMacro (Instruction instruction, OpCode opcode, object operand)
-        {
-            instruction.OpCode = opcode;
-            instruction.Operand = operand;
-        }
-
-
-        private static void MakeMacro (Instruction instruction, OpCode opcode)
-        {
-            instruction.OpCode = opcode;
-            instruction.Operand = null;
+            instr.OpCode = opCode;
+            instr.Operand = operand;
         }
 
 

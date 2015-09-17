@@ -9,5 +9,7 @@
 
 
         public object[] Arguments { get; private set; }
+
+        public object ReturnValue { get; set; }
     }
 }
