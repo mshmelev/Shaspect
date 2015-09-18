@@ -9,6 +9,7 @@ namespace Shaspect.Tests
     {
         private static readonly object sync = new object();
         private static object returnRes;
+        private static object returnRes2;
         private readonly TestClass t;
 
         public class SimpleAspectAttribute : BaseAspectAttribute
@@ -16,6 +17,14 @@ namespace Shaspect.Tests
             public override void OnSuccess (MethodExecInfo methodExecInfo)
             {
                 returnRes = methodExecInfo.ReturnValue;
+            }
+        }
+
+        public class SimpleAspect2Attribute : BaseAspectAttribute
+        {
+            public override void OnSuccess (MethodExecInfo methodExecInfo)
+            {
+                returnRes2 = methodExecInfo.ReturnValue;
             }
         }
 
@@ -129,6 +138,13 @@ namespace Shaspect.Tests
                     throw new ArgumentNullException("s");
                 return 42;
             }
+
+
+            [SimpleAspect2]
+            public int MultipleAspects (int i)
+            {
+                return i + 1;
+            }
         }
 
         public OnSuccessTests()
@@ -136,6 +152,7 @@ namespace Shaspect.Tests
             t = new TestClass();
             Monitor.Enter (sync);
             returnRes = null;
+            returnRes2 = null;
         }
 
 
@@ -260,6 +277,16 @@ namespace Shaspect.Tests
         }
 
 
- 
+        [Fact]
+        public void MultipleAspects_AllWorks()
+        {
+            Assert.Equal (43, t.MultipleAspects (42));
+            Assert.Equal (43, returnRes);
+            Assert.Equal (43, returnRes2);
+        }
+
+
+
+
     }
 }

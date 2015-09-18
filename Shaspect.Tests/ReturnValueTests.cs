@@ -22,6 +22,17 @@ namespace Shaspect.Tests
             }
         }
 
+        public class ChangeReturnValueAttribute : BaseAspectAttribute
+        {
+            public override void OnSuccess (MethodExecInfo methodExecInfo)
+            {
+                if (methodExecInfo.Arguments.Length > 0)
+                    methodExecInfo.ReturnValue = methodExecInfo.Arguments[0];
+                else
+                    methodExecInfo.ReturnValue = "new_value";
+            }
+        }
+
 
         [SimpleAspect]
         internal class TestClass
@@ -143,6 +154,44 @@ namespace Shaspect.Tests
                     throw new ArgumentNullException ("s");
                 return 42;
             }
+            
+
+            [ChangeReturnValue]
+            [SimpleAspect(Exclude = true)]
+            public int ChangeIntReturnValue (int i)
+            {
+                return i + 1;
+            }
+
+
+            [ChangeReturnValue]
+            [SimpleAspect(Exclude = true)]
+            public DateTime ChangeStructReturnValue (DateTime d)
+            {
+                return d.AddYears (1);
+            }
+
+
+            [ChangeReturnValue]
+            [SimpleAspect(Exclude = true)]
+            public string ChangeObjectReturnValue (string s)
+            {
+                return s + "_modified";
+            }
+
+
+            [ChangeReturnValue]
+            [SimpleAspect(Exclude = true)]
+            public string ChangePropertyReturnValue { get; set; }
+
+
+            /*
+            [ChangeReturnValue]
+            [SimpleAspect(Exclude = true)]
+            public T ChangeGenericReturnValue<T> (T s)
+            {
+                return default(T);
+            }*/
         }
 
 
@@ -274,6 +323,35 @@ namespace Shaspect.Tests
                 Assert.Equal ("s", ex.ParamName);
                 Assert.Equal ("notChanged", returnRes);
             }
+        }
+        
+
+        [Fact]
+        public void ChangeReturnValue_Int()
+        {
+            Assert.Equal (42, t.ChangeIntReturnValue (42));
+        }
+
+
+        [Fact]
+        public void ChangeReturnValue_Struct()
+        {
+            Assert.Equal (new DateTime (2017, 11, 7), t.ChangeStructReturnValue (new DateTime (2017, 11, 7)));
+        }
+
+
+        [Fact]
+        public void ChangeReturnValue_Object()
+        {
+            Assert.Equal ("a", t.ChangeObjectReturnValue ("a"));
+        }
+
+
+        [Fact]
+        public void ChangeReturnValue_Property()
+        {
+            t.ChangePropertyReturnValue = "a";
+            Assert.Equal ("new_value", t.ChangePropertyReturnValue);
         }
     }
 }

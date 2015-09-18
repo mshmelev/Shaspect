@@ -27,6 +27,11 @@ namespace Shaspect.Tests
             }
         }
 
+        public class SimpleAspect2Attribute : SimpleAspectAttribute
+        {
+        }
+
+
 
         [SimpleAspect]
         internal class TestClass
@@ -87,6 +92,12 @@ namespace Shaspect.Tests
             {
                 b = default(T);
                 c = default(T);
+            }
+
+
+            [SimpleAspect2]
+            public void MultipleAspects (int i, string s)
+            {
             }
         }
 
@@ -268,6 +279,17 @@ namespace Shaspect.Tests
             Assert.Equal (null, argsBag[1]);
             Assert.Equal ("z", argsBag[2]);
             Assert.Equal (null, s2);
+        }
+
+
+        public void MultipleAspects_ArgumentsPassedEverywhere()
+        {
+            t.MultipleAspects (42, "a");
+            Assert.Equal (4, argsBag.Count);
+            Assert.Equal (42, argsBag[0]);
+            Assert.Equal ("a", argsBag[1]);
+            Assert.Equal (42, argsBag[2]);
+            Assert.Equal ("a", argsBag[3]);
         }
     }
 

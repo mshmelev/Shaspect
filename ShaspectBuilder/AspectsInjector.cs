@@ -287,7 +287,6 @@ namespace Shaspect.Builder
                 var returnVar = new VariableDefinition (method.ReturnType);
                 method.Body.Variables.Add (returnVar);
 
-                retInstr = Instruction.Create (OpCodes.Ldloc, returnVar);
                 var retInitInstr = Instruction.Create (OpCodes.Ldloc, methodExecInfoVar);
 
                 for (int i = 0; i < methodCode.Count; ++i)
@@ -308,8 +307,14 @@ namespace Shaspect.Builder
                     methodCode.Add (OpCodes.Box, returnVar.VariableType);
                 methodCode.Add (OpCodes.Callvirt,  method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").SetMethod));
 
-                // return returnVar;
+                // return (ReturnType)methodExecInfo.ReturnValue;
+                retInstr = Instruction.Create (OpCodes.Ldloc, methodExecInfoVar);
                 methodCode.Add (retInstr);
+                methodCode.Add (OpCodes.Callvirt,  method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").GetMethod));
+                if (returnVar.VariableType.IsValueType || returnVar.VariableType.IsGenericParameter)
+                    methodCode.Add (OpCodes.Unbox_Any, returnVar.VariableType);
+                else
+                    methodCode.Add (OpCodes.Castclass, returnVar.VariableType);
                 methodCode.Add (OpCodes.Ret);
             }
 
