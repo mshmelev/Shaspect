@@ -1,11 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Cecil.Rocks;
 using Mono.Collections.Generic;
 using Shaspect.Builder.Tools;
+using CustomAttributeNamedArgument = Mono.Cecil.CustomAttributeNamedArgument;
 using FieldAttributes = Mono.Cecil.FieldAttributes;
 using MethodAttributes = Mono.Cecil.MethodAttributes;
 using ParameterAttributes = Mono.Cecil.ParameterAttributes;
@@ -26,22 +29,16 @@ namespace Shaspect.Builder
     ///   {
     ///     public static readonly SimpleAspect Aspect_0;
     ///     public static readonly ComplexAspect Aspect_1;
+    ///     ...
     ///
     ///     static AspectsCollection()
     ///     {
-    ///       Aspect_0 = (SimpleAspect) GetAttrInstance (typeof(Class1).GetMethod("Method1"), typeof (SimpleAspect));
-    ///       Aspect_1 = (ComplexAspect) GetAttrInstance (typeof(Class1).GetMethod("Method2"), typeof (ComplexAspect));
-    ///     }
-    ///
-    ///     private static Attribute GetAttrInstance(ICustomAttributeProvider element, Type attrType)
-    ///     {
-    ///       var attrs = memberInfo.GetCustomAttributes (attrType);
-    ///       foreach (var attr in attrs)
-    ///       {
-    ///         if (attr.GetType().Equals (attrType))
-    ///           return (Attribute)attr;
-    ///       }
-    ///       return null;
+    ///       Aspect_0 = new SimpleAspect (param1, param2, param3);
+    ///       Aspect_0.Prop1 = val1;
+    ///       Aspect_0.Prop2 = val2;
+    /// 
+    ///       Aspect_1 = new ComplexAspect (param1, param2);
+    ///       ...
     ///     }
     ///   }
     /// }
@@ -52,7 +49,6 @@ namespace Shaspect.Builder
         private readonly ModuleDefinition mainModule;
         private TypeDefinition initClass;
         private MethodDefinition initCtor;
-        private MethodDefinition getAttrInstanceMethod;
 
         public int EmittedAspects { get; private set; }
 
@@ -87,8 +83,6 @@ namespace Shaspect.Builder
             initCtor.Body.InitLocals = true;
             initCtor.Body.Variables.Add (new VariableDefinition (mainModule.Import (typeof(Type[]))));   // used in attributes instantiating
             initClass.Methods.Add (initCtor);
-
-            BuildGetAttrInstance();
         }
 
 
@@ -97,239 +91,148 @@ namespace Shaspect.Builder
         {
             var ctor = initCtor.Body.Instructions;
 
-            var aspectField = new FieldDefinition ("Aspect_" + EmittedAspects,
+            // The best option to create attribute instance is to call MethodInfo.GetCustomAttribute(). But this approach has some difficulties with
+            // generics and marrying Mono.Cecil with .NET Reflection.
+            // So, 2-step initializing is used:
+            // 1. create aspect class instance with regular class intantiating
+            // 2. initialize all properties
+
+            var aspectInstanceVar = CreateAspectInstance (aspect);
+            InitAspectFields (aspect, aspectInstanceVar);
+            InitAspectProperties (aspect, aspectInstanceVar);
+
+            // Store created aspect in a global variable
+            var aspectInstanceField = new FieldDefinition ("Aspect_" + EmittedAspects,
                 FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, aspect.Aspect.AttributeType);
-            initClass.Fields.Add (aspectField);
-
-            // instantiating Attribute by calling GetCustomAttribute() for the declarator type
-            if (aspect.Declarator is AssemblyDefinition)
-                BuildGetAssemblyInfo (ctor);
-            else if (aspect.Declarator is TypeDefinition)
-                BuildGetTypeInfo ((TypeDefinition)aspect.Declarator, ctor);
-            else if (aspect.Declarator is MethodDefinition)
-                BuildGetMethodInfo ((MethodDefinition)aspect.Declarator, ctor);
-            else if (aspect.Declarator is PropertyDefinition)
-                BuildGetPropertyInfo ((PropertyDefinition)aspect.Declarator, ctor);
-
-            // the IL code bellow is generated from:
-/*
-            Aspect_0= (Test1Attribute) GetAttrInstance (methodInfo, typeof (Test1Attribute));  // methodInfo - retrieved above
-*/
-            ctor.Add (OpCodes.Ldtoken, aspect.Aspect.AttributeType);
-            ctor.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-            ctor.Add (OpCodes.Call, getAttrInstanceMethod);
-
-            ctor.Add (OpCodes.Castclass, aspect.Aspect.AttributeType);
-            ctor.Add (OpCodes.Stsfld, aspectField);
+            initClass.Fields.Add (aspectInstanceField);
+            ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
+            ctor.Add (OpCodes.Stsfld, aspectInstanceField);
 
             ++EmittedAspects;
 
-            return aspectField;
+            return aspectInstanceField;
+        }
+
+
+        private VariableDefinition CreateAspectInstance (AspectDeclaration aspect)
+        {
+            var ctor = initCtor.Body.Instructions;
+    
+            // init all array-type parameters as local variables first
+            var arrayVars = new Dictionary<CustomAttributeArgument, VariableDefinition>();
+            foreach (var arg in aspect.Aspect.ConstructorArguments.Where (a => a.Type.IsArray))
+                arrayVars.Add (arg, AddInitArrayCode (arg.Type, (Array) arg.Value));
+
+            // call aspect's contructor
+            // var aspect = new AspectClass (param1, param2, ...)
+            foreach (var arg in aspect.Aspect.ConstructorArguments)
+            {
+                if (arg.Type.IsArray)
+                    ctor.Add (OpCodes.Ldloc, arrayVars[arg]);
+                else
+                    ctor.Add (ILTools.GetLdcOpCode (arg.Type, arg.Value));
+            }
+            ctor.Add (OpCodes.Newobj, aspect.Aspect.Constructor);
+            
+            var aspectInstanceVar = new VariableDefinition (aspect.Aspect.AttributeType);
+            ctor.Add (OpCodes.Stloc, aspectInstanceVar);
+            initCtor.Body.Variables.Add (aspectInstanceVar);
+
+            return aspectInstanceVar;
+        }
+
+
+        private void InitAspectFields (AspectDeclaration aspect, VariableDefinition aspectInstanceVar)
+        {
+            var ctor = initCtor.Body.Instructions;
+
+            // init all array-type fields as local variables first
+            var arrayVars = new Dictionary<CustomAttributeNamedArgument, VariableDefinition>();
+            foreach (var field in aspect.Aspect.Fields.Where (a => a.Argument.Type.IsArray))
+                arrayVars.Add (field, AddInitArrayCode (field.Argument.Type, (Array) field.Argument.Value));
+
+            // set field values
+            // aspectVar.field1 = const1;
+            foreach (var field in aspect.Aspect.Fields)
+            {
+                ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
+                if (field.Argument.Type.IsArray)
+                    ctor.Add (OpCodes.Ldloc, arrayVars[field]);
+                else
+                    ctor.Add (ILTools.GetLdcOpCode (field.Argument.Type, field.Argument.Value));
+
+                var fieldDef = aspectInstanceVar.VariableType.FindField (field.Name);
+                ctor.Add (OpCodes.Stfld, initCtor.Module.Import (fieldDef));
+            }
+        }
+
+
+        private void InitAspectProperties (AspectDeclaration aspect, VariableDefinition aspectInstanceVar)
+        {
+            var ctor = initCtor.Body.Instructions;
+
+            // init all array-type properties as local variables first
+            var arrayVars = new Dictionary<CustomAttributeNamedArgument, VariableDefinition>();
+            foreach (var prop in aspect.Aspect.Properties.Where (a => a.Argument.Type.IsArray))
+                arrayVars.Add (prop, AddInitArrayCode (prop.Argument.Type, (Array) prop.Argument.Value));
+
+            // set field values
+            // aspectVar.field1 = const1;
+            foreach (var prop in aspect.Aspect.Properties)
+            {
+                Console.WriteLine("---------- {0}.{1}", aspect.Declarator, prop.Name);
+                ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
+                if (prop.Argument.Type.IsArray)
+                    ctor.Add (OpCodes.Ldloc, arrayVars[prop]);
+                else
+                    ctor.Add (ILTools.GetLdcOpCode (prop.Argument.Type, prop.Argument.Value));
+
+                var propSetMethod = aspectInstanceVar.VariableType.FindProperty (prop.Name).SetMethod;
+                ctor.Add (OpCodes.Callvirt, initCtor.Module.Import (propSetMethod));
+            }
+        }
+
+
+        private VariableDefinition AddInitArrayCode (TypeReference type, Array value)
+        {
+            if (value.Rank != 1)
+                throw new ArgumentException ("Only 1-dimension arrays are supported", "value");
+
+            var ctor = initCtor.Body.Instructions;
+            var elemType = type.GetElementType();
+
+            // Generates code:
+            // var arrayVar = new ArrayType[n];
+            // arrayVar[0] = const1;
+            // arrayVar[1] = const2;
+            // ...
+
+            var arrayVar = new VariableDefinition (type);
+            initCtor.Body.Variables.Add (arrayVar);
+
+            int n= value.GetLength (0);
+            ctor.Add (OpCodes.Ldc_I4, n);
+            ctor.Add (OpCodes.Newarr, elemType);
+            ctor.Add (OpCodes.Stloc, arrayVar);
+
+            int startIndex = value.GetLowerBound (0);
+            for (int i = 0; i < n; ++i)
+            {
+                ctor.Add (OpCodes.Ldloc, arrayVar);
+                ctor.Add (OpCodes.Ldc_I4, i + startIndex);
+                ctor.Add (ILTools.GetLdcOpCode (elemType, ((CustomAttributeArgument)value.GetValue (i+startIndex)).Value));
+                ctor.Add (ILTools.GetStelemOpCode (elemType));
+            }
+
+            return arrayVar;
         }
 
 
         public void FinalizeBuilding()
         {
             initCtor.Body.Instructions.Add (OpCodes.Ret);
+            initCtor.Body.OptimizeMacros();
         }
-
-
-        private void BuildGetAssemblyInfo (Collection<Instruction> code)
-        {
-            // the IL code bellow is generated from:
-            /*
-            Assembly.GetExecutingAssembly();
-            */
-            code.Add (OpCodes.Call, mainModule.Import (typeof (Assembly).GetMethod ("GetExecutingAssembly")));
-        }
-
-
-        private void BuildGetTypeInfo (TypeDefinition typeDef, Collection<Instruction> code)
-        {
-            // the IL code bellow is generated from:
-            /*
-            typeof (Class1)
-            */
-            code.Add (OpCodes.Ldtoken, typeDef);
-            code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-        }
-
-
-        private void BuildGetMethodInfo (MethodDefinition method, Collection<Instruction> code)
-        {
-            // the IL code bellow is generated from:
-/*
-            var methodInfo= typeof (Class1)
-                .GetMethod (
-                    "F1",
-                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static,
-                    null,
-                    CallingConventions.Any,
-                    new[] {typeof (int), typeof (string)},  // params
-                    null
-                );
-*/
-            code.Add (OpCodes.Ldtoken, method.DeclaringType);
-            code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-            code.Add (OpCodes.Ldstr, method.Name);
-            code.Add (OpCodes.Ldc_I4, (int) (BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
-            code.Add (OpCodes.Ldnull);
-            code.Add (OpCodes.Ldc_I4, (int) CallingConventions.Any);
-
-            code.Add (OpCodes.Ldc_I4, method.Parameters.Count);
-            code.Add (OpCodes.Newarr, mainModule.Import (typeof (Type)));
-            code.Add (OpCodes.Stloc_0);
-            code.Add (OpCodes.Ldloc_0);
-
-            for (int i = 0; i < method.Parameters.Count; ++i)
-            {
-                code.Add (OpCodes.Ldc_I4, i);
-                code.Add (OpCodes.Ldtoken, method.Parameters[i].ParameterType);
-                code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-                code.Add (OpCodes.Stelem_Ref);
-                code.Add (OpCodes.Ldloc_0);
-            }
-
-            code.Add (OpCodes.Ldnull);
-            code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetMethod", new[]
-            {
-                typeof (string), typeof (BindingFlags), typeof (Binder), typeof (CallingConventions), typeof (Type[]),
-                typeof (ParameterModifier[])
-            })));
-        }
-        
-        
-        private void BuildGetPropertyInfo (PropertyDefinition property, Collection<Instruction> code)
-        {
-            // the IL code bellow is generated from:
-/*
-            var methodInfo= typeof (Class1)
-                .GetProperty (
-                    "P1",
-                    BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static,
-                    null,
-                    typeof(int),                            // return type
-                    new[] {typeof (int), typeof (string)},  // params
-                    null
-                );
-*/
-            code.Add (OpCodes.Ldtoken, property.DeclaringType);
-            code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-            code.Add (OpCodes.Ldstr, property.Name);
-            code.Add (OpCodes.Ldc_I4, (int) (BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static));
-            code.Add (OpCodes.Ldnull);
-            code.Add (OpCodes.Ldtoken, property.PropertyType);
-            code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-
-            code.Add (OpCodes.Ldc_I4, property.Parameters.Count);
-            code.Add (OpCodes.Newarr, mainModule.Import (typeof (Type)));
-            code.Add (OpCodes.Stloc_0);
-            code.Add (OpCodes.Ldloc_0);
-
-            for (int i = 0; i < property.Parameters.Count; ++i)
-            {
-                code.Add (OpCodes.Ldc_I4, i);
-                code.Add (OpCodes.Ldtoken, property.Parameters[i].ParameterType);
-                code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetTypeFromHandle")));
-                code.Add (OpCodes.Stelem_Ref);
-                code.Add (OpCodes.Ldloc_0);
-            }
-
-            code.Add (OpCodes.Ldnull);
-            code.Add (OpCodes.Call, mainModule.Import (typeof (Type).GetMethod ("GetProperty", new[]
-            {
-                typeof (string), typeof (BindingFlags), typeof (Binder), typeof (Type), typeof (Type[]),
-                typeof (ParameterModifier[])
-            })));
-        }
-
-
-
-
-        /// <summary>
-        /// Add GetAttrInstance() method to Shaspect.Implementation
-        /// </summary>
-        private void BuildGetAttrInstance()
-        {
-            // The IL code bellow is compiled from:
-/*
-        private static Attribute GetAttrInstance (ICustomAttributeProvider element, Type attrType)
-        {
-            var attrs = memberInfo.GetCustomAttributes (attrType);
-            foreach (var attr in attrs)
-            {
-                if (attr.GetType().Equals (attrType))
-                    return (Attribute)attr;
-            }
-
-            return null;
-        }
-*/
-
-            getAttrInstanceMethod = new MethodDefinition ("GetAttrInstance", MethodAttributes.Private | MethodAttributes.HideBySig | MethodAttributes.Static, mainModule.Import (typeof (Attribute)));
-
-            initClass.Methods.Add (getAttrInstanceMethod);
-
-            getAttrInstanceMethod.Parameters.Add (new ParameterDefinition ("element", ParameterAttributes.None, mainModule.Import (typeof(System.Reflection.ICustomAttributeProvider))));
-            getAttrInstanceMethod.Parameters.Add (new ParameterDefinition ("attrType", ParameterAttributes.None, mainModule.Import (typeof(Type))));
-
-            getAttrInstanceMethod.Body.InitLocals = true;
-            getAttrInstanceMethod.Body.Variables.Add (new VariableDefinition ("attrs", mainModule.Import (typeof(object[]))));
-            getAttrInstanceMethod.Body.Variables.Add (new VariableDefinition ("attr", mainModule.Import (typeof(object))));
-            getAttrInstanceMethod.Body.Variables.Add (new VariableDefinition (mainModule.Import (typeof(Attribute))));
-            getAttrInstanceMethod.Body.Variables.Add (new VariableDefinition (mainModule.Import (typeof (object[]))));
-            var intVar = new VariableDefinition (mainModule.Import (typeof (int)));
-            getAttrInstanceMethod.Body.Variables.Add (intVar);
-
-            var code = getAttrInstanceMethod.Body.Instructions;
-
-            var retRes = Instruction.Create (OpCodes.Ldloc_2);
-            var label1 = Instruction.Create (OpCodes.Ldloc_S, intVar);
-            var label2 = Instruction.Create (OpCodes.Ldloc_S, intVar);
-
-            code.Add (OpCodes.Ldarg_0);
-            code.Add (OpCodes.Ldarg_1);
-            code.Add (OpCodes.Ldc_I4_1);    // true
-            code.Add (OpCodes.Callvirt, mainModule.Import (typeof (System.Reflection.ICustomAttributeProvider).GetMethod ("GetCustomAttributes", new []
-                {
-                    typeof(Type), typeof(bool)
-                })));
-            code.Add (OpCodes.Stloc_0);
-            code.Add (OpCodes.Ldloc_0);
-            code.Add (OpCodes.Stloc_3);
-            code.Add (OpCodes.Ldc_I4_0);
-            code.Add (OpCodes.Stloc_S, intVar);
-            code.Add (OpCodes.Br_S, label2);
-            var label3= Instruction.Create (OpCodes.Ldloc_3);
-            code.Add (label3);
-            code.Add (OpCodes.Ldloc_S, intVar);
-            code.Add (OpCodes.Ldelem_Ref);
-            code.Add (OpCodes.Stloc_1);
-            code.Add (OpCodes.Ldloc_1);
-            code.Add (OpCodes.Callvirt, mainModule.Import (typeof (object).GetMethod("GetType", Type.EmptyTypes)));
-            code.Add (OpCodes.Ldarg_1);
-            code.Add (OpCodes.Callvirt, mainModule.Import (typeof (Type).GetMethod("Equals", new [] {typeof(Type)})));
-            code.Add (OpCodes.Brfalse_S, label1);
-            code.Add (OpCodes.Ldloc_1);
-            code.Add (OpCodes.Castclass, mainModule.Import (typeof (Attribute)));
-            code.Add (OpCodes.Stloc_2);
-            code.Add (OpCodes.Leave_S, retRes);
-            code.Add (label1);      // OpCodes.Ldloc_S, intVar
-            code.Add (OpCodes.Ldc_I4_1);
-            code.Add (OpCodes.Add);
-            code.Add (OpCodes.Stloc_S, intVar);
-            code.Add (label2);      // OpCodes.Ldloc_S, intVar
-            code.Add (OpCodes.Ldloc_3);
-            code.Add (OpCodes.Ldlen);
-            code.Add (OpCodes.Conv_I4);
-            code.Add (OpCodes.Blt_S, label3);
-            code.Add (OpCodes.Ldnull);
-            code.Add (OpCodes.Ret);
-
-            code.Add (retRes);      // OpCodes.Ldloc_2
-            code.Add (OpCodes.Ret);
-        }
-
 
     }
 }

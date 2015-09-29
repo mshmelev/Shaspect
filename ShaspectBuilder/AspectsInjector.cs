@@ -42,7 +42,7 @@ namespace Shaspect.Builder
 
                 foreach (var type in types)
                 {
-                    if (IsInheritedFrom (type, baseAspectType))       // ignore aspects themselves
+                    if (type.IsInheritedFrom (baseAspectType))       // ignore aspects themselves
                         continue;
 
                     var typeAspects = assemblyAspects.NestWith (GetAspects (type, module));
@@ -394,7 +394,7 @@ namespace Shaspect.Builder
             var baseAspectType = module.Import (typeof (BaseAspectAttribute));
             foreach (var attr in member.CustomAttributes)
             {
-                if (IsInheritedFrom (attr.AttributeType, baseAspectType))
+                if (attr.AttributeType.IsInheritedFrom (baseAspectType))
                     res.Add (new AspectDeclaration {Aspect = attr, Declarator = member });
             }
 
@@ -402,22 +402,5 @@ namespace Shaspect.Builder
         }
 
 
-        private static bool IsInheritedFrom (TypeReference childType, TypeReference baseType)
-        {
-            try
-            {
-                do
-                {
-                    if (childType.FullName == baseType.FullName)
-                        return true;
-                    childType = childType.Resolve().BaseType;
-                } while (childType != null);
-            }
-            catch (AssemblyResolutionException)
-            {
-            }
-
-            return false;
-        }
     }
 }

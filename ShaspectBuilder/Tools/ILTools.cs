@@ -1,5 +1,7 @@
-﻿using Mono.Cecil;
+﻿using System;
+using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Mono.Cecil.Rocks;
 using Mono.Collections.Generic;
 
 
@@ -118,8 +120,8 @@ namespace Shaspect.Builder.Tools
 
 
         /// <summary>
-        /// Replaces OpCode and Operand leaving instruction reference untouched.
-        /// Useful when instruction is referred to from other places.
+        ///     Replaces OpCode and Operand leaving instruction reference untouched.
+        ///     Useful when instruction is referred to from other places.
         /// </summary>
         /// <param name="instr"></param>
         /// <param name="opCode"></param>
@@ -132,7 +134,7 @@ namespace Shaspect.Builder.Tools
 
 
         /// <summary>
-        /// Returns Ldind instruction specific to the passed type.
+        ///     Returns Ldind instruction specific to the passed type.
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
@@ -166,11 +168,97 @@ namespace Shaspect.Builder.Tools
                     case MetadataType.Double:
                         return Instruction.Create (OpCodes.Ldind_R8);
                     case MetadataType.ValueType:
-                       return Instruction.Create (OpCodes.Ldobj, type);
+                        return Instruction.Create (OpCodes.Ldobj, type);
                 }
             }
 
             return Instruction.Create (OpCodes.Ldind_Ref);
+        }
+
+
+        /// <summary>
+        ///     Returns Stelem instruction specific to the passed type.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public static Instruction GetStelemOpCode (TypeReference type)
+        {
+            if (type.IsValueType)
+            {
+                var typeDef = type.Resolve();
+                if (typeDef.IsEnum)
+                    type = typeDef.GetEnumUnderlyingType();
+
+                switch (type.MetadataType)
+                {
+                    case MetadataType.Boolean:
+                    case MetadataType.SByte:
+                    case MetadataType.Byte:
+                        return Instruction.Create (OpCodes.Stelem_I1);
+                    case MetadataType.Char:
+                    case MetadataType.Int16:
+                    case MetadataType.UInt16:
+                        return Instruction.Create (OpCodes.Stelem_I2);
+                    case MetadataType.Int32:
+                    case MetadataType.UInt32:
+                        return Instruction.Create (OpCodes.Stelem_I4);
+                    case MetadataType.Int64:
+                    case MetadataType.UInt64:
+                        return Instruction.Create (OpCodes.Stelem_I8);
+                    case MetadataType.Single:
+                        return Instruction.Create (OpCodes.Stelem_R4);
+                    case MetadataType.Double:
+                        return Instruction.Create (OpCodes.Stelem_R8);
+                }
+            }
+
+            return Instruction.Create (OpCodes.Stelem_Ref);
+        }
+
+
+        /// <summary>
+        ///     Returns Ldc instruction specific to the passed type.
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static Instruction GetLdcOpCode (TypeReference type, object value)
+        {
+            var typeDef = type.Resolve();
+            if (typeDef.IsEnum)
+                type = typeDef.GetEnumUnderlyingType();
+
+            switch (type.MetadataType)
+            {
+                case MetadataType.Boolean:
+                    return Instruction.Create (OpCodes.Ldc_I4, (bool) value ? 1 : 0);
+                case MetadataType.Char:
+                    return Instruction.Create (OpCodes.Ldc_I4, (char) value);
+                case MetadataType.SByte:
+                    return Instruction.Create (OpCodes.Ldc_I4_S, (sbyte) value);
+                case MetadataType.Byte:
+                    return Instruction.Create (OpCodes.Ldc_I4, (int) (byte) value);
+                case MetadataType.Int16:
+                    return Instruction.Create (OpCodes.Ldc_I4, (short) value);
+                case MetadataType.UInt16:
+                    return Instruction.Create (OpCodes.Ldc_I4, (ushort) value);
+                case MetadataType.Int32:
+                    return Instruction.Create (OpCodes.Ldc_I4, (int) value);
+                case MetadataType.UInt32:
+                    return Instruction.Create (OpCodes.Ldc_I4, (int) (uint) value);
+                case MetadataType.Int64:
+                    return Instruction.Create (OpCodes.Ldc_I8, (long) value);
+                case MetadataType.UInt64:
+                    return Instruction.Create (OpCodes.Ldc_I8, (long) (ulong) value);
+                case MetadataType.Single:
+                    return Instruction.Create (OpCodes.Ldc_R4, (float) value);
+                case MetadataType.Double:
+                    return Instruction.Create (OpCodes.Ldc_R8, (double) value);
+                case MetadataType.String:
+                    return Instruction.Create (OpCodes.Ldstr, (string) value);
+            }
+
+            throw new ArgumentException ("Unsupported type: " + type, "type");
         }
     }
 }

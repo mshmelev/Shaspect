@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using Xunit;
 
@@ -76,7 +74,6 @@ namespace Shaspect.Tests
             public uint UIntReturn (uint i)
             {
                 return i + 1;
-                ;
             }
 
 
@@ -89,7 +86,6 @@ namespace Shaspect.Tests
             public ulong ULongReturn (ulong i)
             {
                 return i + 1;
-                ;
             }
 
 
@@ -154,10 +150,10 @@ namespace Shaspect.Tests
                     throw new ArgumentNullException ("s");
                 return 42;
             }
-            
+
 
             [ChangeReturnValue]
-            [SimpleAspect(Exclude = true)]
+            [SimpleAspect (Exclude = true)]
             public int ChangeIntReturnValue (int i)
             {
                 return i + 1;
@@ -165,7 +161,7 @@ namespace Shaspect.Tests
 
 
             [ChangeReturnValue]
-            [SimpleAspect(Exclude = true)]
+            [SimpleAspect (Exclude = true)]
             public DateTime ChangeStructReturnValue (DateTime d)
             {
                 return d.AddYears (1);
@@ -173,7 +169,7 @@ namespace Shaspect.Tests
 
 
             [ChangeReturnValue]
-            [SimpleAspect(Exclude = true)]
+            [SimpleAspect (Exclude = true)]
             public string ChangeObjectReturnValue (string s)
             {
                 return s + "_modified";
@@ -181,17 +177,16 @@ namespace Shaspect.Tests
 
 
             [ChangeReturnValue]
-            [SimpleAspect(Exclude = true)]
+            [SimpleAspect (Exclude = true)]
             public string ChangePropertyReturnValue { get; set; }
 
 
-            /*
             [ChangeReturnValue]
-            [SimpleAspect(Exclude = true)]
+            [SimpleAspect (Exclude = true)]
             public T ChangeGenericReturnValue<T> (T s)
             {
                 return default(T);
-            }*/
+            }
         }
 
 
@@ -324,7 +319,7 @@ namespace Shaspect.Tests
                 Assert.Equal ("notChanged", returnRes);
             }
         }
-        
+
 
         [Fact]
         public void ChangeReturnValue_Int()
@@ -344,6 +339,14 @@ namespace Shaspect.Tests
         public void ChangeReturnValue_Object()
         {
             Assert.Equal ("a", t.ChangeObjectReturnValue ("a"));
+        }
+
+
+        [Fact]
+        public void ChangeReturnValue_Generic()
+        {
+            Assert.Equal (42, t.ChangeGenericReturnValue (42));
+            Assert.Equal ("a", t.ChangeGenericReturnValue ("a"));
         }
 
 
