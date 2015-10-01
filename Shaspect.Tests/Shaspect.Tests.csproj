@@ -73,6 +73,7 @@
     <Compile Include="CallsFlowTests.cs" />
     <Compile Include="InitializeTests.cs" />
     <Compile Include="NestedAspectsTest.cs" />
+    <Compile Include="OnExceptionTests.cs" />
     <Compile Include="OnSuccessTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="OnEntryBasicTests.cs" />

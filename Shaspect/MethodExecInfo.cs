@@ -1,4 +1,7 @@
-﻿namespace Shaspect
+﻿using System;
+
+
+namespace Shaspect
 {
     public class MethodExecInfo
     {
@@ -11,5 +14,7 @@
         public object[] Arguments { get; private set; }
 
         public object ReturnValue { get; set; }
+
+        public Exception Exception { get; set; }
     }
 }

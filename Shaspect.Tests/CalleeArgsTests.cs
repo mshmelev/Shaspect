@@ -20,10 +20,7 @@ namespace Shaspect.Tests
             public override void OnEntry (MethodExecInfo methodExecInfo)
             {
                 lock (sync)
-                {
-                    foreach (var argument in methodExecInfo.Arguments)
-                        argsBag.Add (argument);
-                }
+                    argsBag.AddRange (methodExecInfo.Arguments);
             }
         }
 

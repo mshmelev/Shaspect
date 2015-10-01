@@ -1,13 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using Xunit;
 
 
 namespace Shaspect.Tests
 {
-    public class OnSuccessTests
+    public class OnSuccessTests : IDisposable
     {
         private static readonly object sync = new object();
+        private static readonly List<object> args= new List<object>();
         private static object returnRes;
         private static object returnRes2;
         private readonly TestClass t;
@@ -17,6 +19,7 @@ namespace Shaspect.Tests
             public override void OnSuccess (MethodExecInfo methodExecInfo)
             {
                 returnRes = methodExecInfo.ReturnValue;
+                args.AddRange (methodExecInfo.Arguments);
             }
         }
 
@@ -29,7 +32,7 @@ namespace Shaspect.Tests
         }
 
         
-        [SimpleAspectAttribute]
+        [SimpleAspect]
         internal class TestClass
         {
             private string prop;
@@ -153,6 +156,7 @@ namespace Shaspect.Tests
             Monitor.Enter (sync);
             returnRes = null;
             returnRes2 = null;
+            args.Clear();
         }
 
 
@@ -278,7 +282,15 @@ namespace Shaspect.Tests
 
 
         [Fact]
-        public void MultipleAspects_AllWorks()
+        public void OnSuccess_Method_Args_Passed()
+        {
+            t.SimpleReturn (42);
+            Assert.Equal (new object[] {42}, args);
+        }
+
+
+        [Fact]
+        public void MultipleAspects_All_OnSuccess_Called()
         {
             Assert.Equal (43, t.MultipleAspects (42));
             Assert.Equal (43, returnRes);

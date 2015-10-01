@@ -104,6 +104,7 @@ namespace Shaspect.Builder
         /// <summary>
         /// Modifies the passed method so it looks like:
         /// <code>
+        ///     var methodExecInfo = new MethodExecInfo (new [] {arg1, arg2, ...});
         ///     BaseAspectAttribute.OnEntry (methodExecInfo);
         ///     try
         ///     {
@@ -113,6 +114,7 @@ namespace Shaspect.Builder
         ///         }
         ///         catch (Exception ex)
         ///         {
+        ///             methodExecInfo.Exception = ex;
         ///             BaseAspectAttribute.OnException (methodExecInfo);
         ///             throw;
         ///         }
@@ -140,22 +142,59 @@ namespace Shaspect.Builder
             // TODO: OnEntry should be called only in the case OnEntry is overridden somewhere in descendants of BaseAspectAttribute
             CallOnEntry (method, methodExecInfoVar, aspectField, methodCode.IndexOf (firstInstruction));
 
-            CallOnSuccess (method, methodExecInfoVar, aspectField, methodCode.LastIndexOf (retInstr));
+            var callOnSuccessCode = CallOnSuccess (method, methodExecInfoVar, aspectField, methodCode.LastIndexOf (retInstr));
 
-            methodCode.Insert (methodCode.LastIndexOf (retInstr), Instruction.Create (OpCodes.Leave, retInstr));        // needed to correctly get to finally section
+            AddCatchBlock (method, aspectField, methodExecInfoVar, firstInstruction, callOnSuccessCode.First());
+            AddFinallyBlock(method, firstInstruction, retInstr);
+
+            method.Body.OptimizeMacros();
+        }
+
+
+        private static void AddFinallyBlock (MethodDefinition method, Instruction tryStartInstr, Instruction tryEndInstr)
+        {
+            var methodCode = method.Body.Instructions;
+
+            methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), Instruction.Create (OpCodes.Leave, tryEndInstr)); // needed to jump correctly to finally section
             var finallyCode = new Collection<Instruction>();
-            finallyCode.Add (OpCodes.Endfinally);              // TODO: add BaseAspectAttribute.OnExit call
-            methodCode.Insert (methodCode.LastIndexOf (retInstr), finallyCode);
+            finallyCode.Add (OpCodes.Endfinally); // TODO: add BaseAspectAttribute.OnExit call
+            methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), finallyCode);
 
             method.Body.ExceptionHandlers.Add (new ExceptionHandler (ExceptionHandlerType.Finally)
             {
-                TryStart = firstInstruction,
+                TryStart = tryStartInstr,
                 TryEnd = finallyCode.First(),
                 HandlerStart = finallyCode.First(),
                 HandlerEnd = finallyCode.Last().Next
             });
+        }
 
-            method.Body.OptimizeMacros();
+
+        private static void AddCatchBlock (MethodDefinition method, FieldDefinition aspectField, VariableDefinition methodExecInfoVar, Instruction tryStartInstr, Instruction tryEndInstr)
+        {
+            var methodCode = method.Body.Instructions;
+
+            methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), Instruction.Create (OpCodes.Leave, tryEndInstr)); // needed to jump correctly to catch section
+
+            var exceptionVar = new VariableDefinition (method.Module.Import (typeof (Exception)));
+            method.Body.Variables.Add (exceptionVar);
+            var catchCode = new Collection<Instruction>();
+            catchCode.Add (OpCodes.Stloc, exceptionVar);
+            catchCode.Add (OpCodes.Ldloc, methodExecInfoVar);
+            catchCode.Add (OpCodes.Ldloc, exceptionVar);
+            catchCode.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("Exception").SetMethod));
+            catchCode.Add (BuildOnExceptionCall (method, methodExecInfoVar, aspectField));
+            catchCode.Add (OpCodes.Rethrow);
+            methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), catchCode);
+
+            method.Body.ExceptionHandlers.Add (new ExceptionHandler (ExceptionHandlerType.Catch)
+            {
+                CatchType = method.Module.Import (typeof (Exception)),
+                TryStart = tryStartInstr,
+                TryEnd = catchCode.First(),
+                HandlerStart = catchCode.First(),
+                HandlerEnd = catchCode.Last().Next
+            });
         }
 
 
@@ -172,7 +211,7 @@ namespace Shaspect.Builder
         }
 
 
-        private static void CallOnSuccess (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
+        private static Collection<Instruction> CallOnSuccess (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
         {
             // The code below is IL generated from:
             // AspectsCollection.Aspect_x.OnSuccess (methodExecInfo);
@@ -182,13 +221,15 @@ namespace Shaspect.Builder
             code.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnSuccess")));
 
             method.Body.Instructions.Insert (offset, code);
+
+            return code;
         }
 
 
         private static void CallOnExit (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
         {
             // The code below is IL generated from:
-            // AspectsCollection.Aspect_x.OnSuccess (methodExecInfo);
+            // AspectsCollection.Aspect_x.OnExit (methodExecInfo);
             var code = new Collection<Instruction>();
             code.Add (OpCodes.Ldsfld, aspectField);
             code.Add (OpCodes.Ldloc, methodExecInfoVar);
@@ -198,16 +239,16 @@ namespace Shaspect.Builder
         }
 
 
-        private static void CallOnException (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
+        private static Collection<Instruction> BuildOnExceptionCall (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField)
         {
             // The code below is IL generated from:
-            // AspectsCollection.Aspect_x.OnSuccess (methodExecInfo);
+            // AspectsCollection.Aspect_x.OnException (methodExecInfo);
             var code = new Collection<Instruction>();
             code.Add (OpCodes.Ldsfld, aspectField);
             code.Add (OpCodes.Ldloc, methodExecInfoVar);
             code.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnException")));
 
-            method.Body.Instructions.Insert (offset, code);
+            return code;
         }
 
 
@@ -305,12 +346,12 @@ namespace Shaspect.Builder
                 methodCode.Add (OpCodes.Ldloc, returnVar);
                 if (returnVar.VariableType.IsValueType || returnVar.VariableType.IsGenericParameter)
                     methodCode.Add (OpCodes.Box, returnVar.VariableType);
-                methodCode.Add (OpCodes.Callvirt,  method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").SetMethod));
+                methodCode.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").SetMethod));
 
                 // return (ReturnType)methodExecInfo.ReturnValue;
                 retInstr = Instruction.Create (OpCodes.Ldloc, methodExecInfoVar);
                 methodCode.Add (retInstr);
-                methodCode.Add (OpCodes.Callvirt,  method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").GetMethod));
+                methodCode.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("ReturnValue").GetMethod));
                 if (returnVar.VariableType.IsValueType || returnVar.VariableType.IsGenericParameter)
                     methodCode.Add (OpCodes.Unbox_Any, returnVar.VariableType);
                 else
