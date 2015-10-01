@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 
 
 namespace Shaspect
@@ -7,6 +8,15 @@ namespace Shaspect
                      AttributeTargets.Method | AttributeTargets.Property)]
     public abstract class BaseAspectAttribute : Attribute
     {
+        /// <summary>
+        /// Called once at application startup for every method the aspect is applied for.
+        /// </summary>
+        /// <param name="method"></param>
+        public virtual void Initialize (MethodBase method)
+        {
+        }
+
+
         /// <summary>
         /// Called on target method is starting execution
         /// </summary>

@@ -2,16 +2,15 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
-using Mono.Collections.Generic;
 using Shaspect.Builder.Tools;
 using CustomAttributeNamedArgument = Mono.Cecil.CustomAttributeNamedArgument;
 using FieldAttributes = Mono.Cecil.FieldAttributes;
 using MethodAttributes = Mono.Cecil.MethodAttributes;
-using ParameterAttributes = Mono.Cecil.ParameterAttributes;
 using TypeAttributes = Mono.Cecil.TypeAttributes;
 
 
@@ -87,23 +86,31 @@ namespace Shaspect.Builder
 
 
 
-        public FieldDefinition BuildAspectInitCode (AspectDeclaration aspect)
+        public FieldDefinition BuildAspectInitCode (MethodDefinition method, CustomAttribute aspect)
         {
             var ctor = initCtor.Body.Instructions;
 
-            // The best option to create attribute instance is to call MethodInfo.GetCustomAttribute(). But this approach has some difficulties with
-            // generics and marrying Mono.Cecil with .NET Reflection.
+            // The best option to create attribute instance is to call MethodInfo.GetCustomAttribute(). But GetCustomAttribute() does not guarantee to return
+            // a new instance every time on all the platform implementations. And a new instance is required, for example, for every class method 
+            // if an aspect is declared on class level.
             // So, 2-step initializing is used:
             // 1. create aspect class instance with regular class intantiating
             // 2. initialize all properties
-
             var aspectInstanceVar = CreateAspectInstance (aspect);
             InitAspectFields (aspect, aspectInstanceVar);
             InitAspectProperties (aspect, aspectInstanceVar);
 
+            // aspect.Initialize (MethodBase.GetMethodFromHandle (methodToken, methodDeclaringType));
+            ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
+            ctor.Add (OpCodes.Ldtoken, method);
+            ctor.Add (OpCodes.Ldtoken, method.DeclaringType);
+            ctor.Add (OpCodes.Call, initCtor.Module.Import (typeof (MethodBase).GetMethod ("GetMethodFromHandle",
+                new[] {typeof (RuntimeMethodHandle), typeof (RuntimeTypeHandle)})));
+            ctor.Add (OpCodes.Callvirt, initCtor.Module.Import (typeof (BaseAspectAttribute).GetMethod ("Initialize")));
+
             // Store created aspect in a global variable
             var aspectInstanceField = new FieldDefinition ("Aspect_" + EmittedAspects,
-                FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, aspect.Aspect.AttributeType);
+                FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, aspect.AttributeType);
             initClass.Fields.Add (aspectInstanceField);
             ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
             ctor.Add (OpCodes.Stsfld, aspectInstanceField);
@@ -114,27 +121,27 @@ namespace Shaspect.Builder
         }
 
 
-        private VariableDefinition CreateAspectInstance (AspectDeclaration aspect)
+        private VariableDefinition CreateAspectInstance (CustomAttribute aspect)
         {
             var ctor = initCtor.Body.Instructions;
     
             // init all array-type parameters as local variables first
             var arrayVars = new Dictionary<CustomAttributeArgument, VariableDefinition>();
-            foreach (var arg in aspect.Aspect.ConstructorArguments.Where (a => a.Type.IsArray))
+            foreach (var arg in aspect.ConstructorArguments.Where (a => a.Type.IsArray))
                 arrayVars.Add (arg, AddInitArrayCode (arg.Type, (Array) arg.Value));
 
             // call aspect's contructor
             // var aspect = new AspectClass (param1, param2, ...)
-            foreach (var arg in aspect.Aspect.ConstructorArguments)
+            foreach (var arg in aspect.ConstructorArguments)
             {
                 if (arg.Type.IsArray)
                     ctor.Add (OpCodes.Ldloc, arrayVars[arg]);
                 else
                     ctor.Add (ILTools.GetLdcOpCode (arg.Type, arg.Value));
             }
-            ctor.Add (OpCodes.Newobj, aspect.Aspect.Constructor);
+            ctor.Add (OpCodes.Newobj, aspect.Constructor);
             
-            var aspectInstanceVar = new VariableDefinition (aspect.Aspect.AttributeType);
+            var aspectInstanceVar = new VariableDefinition (aspect.AttributeType);
             ctor.Add (OpCodes.Stloc, aspectInstanceVar);
             initCtor.Body.Variables.Add (aspectInstanceVar);
 
@@ -142,18 +149,18 @@ namespace Shaspect.Builder
         }
 
 
-        private void InitAspectFields (AspectDeclaration aspect, VariableDefinition aspectInstanceVar)
+        private void InitAspectFields (CustomAttribute aspect, VariableDefinition aspectInstanceVar)
         {
             var ctor = initCtor.Body.Instructions;
 
             // init all array-type fields as local variables first
             var arrayVars = new Dictionary<CustomAttributeNamedArgument, VariableDefinition>();
-            foreach (var field in aspect.Aspect.Fields.Where (a => a.Argument.Type.IsArray))
+            foreach (var field in aspect.Fields.Where (a => a.Argument.Type.IsArray))
                 arrayVars.Add (field, AddInitArrayCode (field.Argument.Type, (Array) field.Argument.Value));
 
             // set field values
             // aspectVar.field1 = const1;
-            foreach (var field in aspect.Aspect.Fields)
+            foreach (var field in aspect.Fields)
             {
                 ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
                 if (field.Argument.Type.IsArray)
@@ -167,20 +174,19 @@ namespace Shaspect.Builder
         }
 
 
-        private void InitAspectProperties (AspectDeclaration aspect, VariableDefinition aspectInstanceVar)
+        private void InitAspectProperties (CustomAttribute aspect, VariableDefinition aspectInstanceVar)
         {
             var ctor = initCtor.Body.Instructions;
 
             // init all array-type properties as local variables first
             var arrayVars = new Dictionary<CustomAttributeNamedArgument, VariableDefinition>();
-            foreach (var prop in aspect.Aspect.Properties.Where (a => a.Argument.Type.IsArray))
+            foreach (var prop in aspect.Properties.Where (a => a.Argument.Type.IsArray))
                 arrayVars.Add (prop, AddInitArrayCode (prop.Argument.Type, (Array) prop.Argument.Value));
 
             // set field values
             // aspectVar.field1 = const1;
-            foreach (var prop in aspect.Aspect.Properties)
+            foreach (var prop in aspect.Properties)
             {
-                Console.WriteLine("---------- {0}.{1}", aspect.Declarator, prop.Name);
                 ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
                 if (prop.Argument.Type.IsArray)
                     ctor.Add (OpCodes.Ldloc, arrayVars[prop]);

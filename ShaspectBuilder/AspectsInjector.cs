@@ -94,9 +94,9 @@ namespace Shaspect.Builder
                 if (!IsApplicableElementTarget (method, aspect))
                     continue;
 
-                var aspectField = initClassGenerator.BuildAspectInitCode (aspect);
+                var aspectField = initClassGenerator.BuildAspectInitCode (method, aspect.Aspect);
 
-                InjectAspectBehavior(method, aspectField);
+                InjectAspectBehavior (method, aspectField);
             }
         }
 

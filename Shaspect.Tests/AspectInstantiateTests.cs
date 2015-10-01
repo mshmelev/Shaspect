@@ -11,7 +11,7 @@ namespace Shaspect.Tests
     /// <summary>
     /// Checks aspects initialization: passing constructor parameters and setting properties.
     /// </summary>
-    public class AspectInitTests : IDisposable
+    public class AspectInstantiateTests : IDisposable
     {
         private static readonly object sync = new object();
         private static ConcurrentBag<object> callsBag= new ConcurrentBag<object>();
@@ -378,7 +378,7 @@ namespace Shaspect.Tests
         }
 
 
-        public AspectInitTests()
+        public AspectInstantiateTests()
         {
             Monitor.Enter (sync);
             callsBag= new ConcurrentBag<object>();
