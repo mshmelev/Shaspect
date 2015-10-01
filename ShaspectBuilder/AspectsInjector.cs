@@ -145,19 +145,21 @@ namespace Shaspect.Builder
             var callOnSuccessCode = CallOnSuccess (method, methodExecInfoVar, aspectField, methodCode.LastIndexOf (retInstr));
 
             AddCatchBlock (method, aspectField, methodExecInfoVar, firstInstruction, callOnSuccessCode.First());
-            AddFinallyBlock(method, firstInstruction, retInstr);
+            AddFinallyBlock (method, aspectField, methodExecInfoVar, firstInstruction, retInstr);
 
             method.Body.OptimizeMacros();
         }
 
 
-        private static void AddFinallyBlock (MethodDefinition method, Instruction tryStartInstr, Instruction tryEndInstr)
+        private static void AddFinallyBlock (MethodDefinition method, FieldDefinition aspectField, VariableDefinition methodExecInfoVar, Instruction tryStartInstr, Instruction tryEndInstr)
         {
             var methodCode = method.Body.Instructions;
 
             methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), Instruction.Create (OpCodes.Leave, tryEndInstr)); // needed to jump correctly to finally section
+            
             var finallyCode = new Collection<Instruction>();
-            finallyCode.Add (OpCodes.Endfinally); // TODO: add BaseAspectAttribute.OnExit call
+            finallyCode.Add (BuildOnExitCall (method, methodExecInfoVar, aspectField));
+            finallyCode.Add (OpCodes.Endfinally);
             methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), finallyCode);
 
             method.Body.ExceptionHandlers.Add (new ExceptionHandler (ExceptionHandlerType.Finally)
@@ -176,6 +178,12 @@ namespace Shaspect.Builder
 
             methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), Instruction.Create (OpCodes.Leave, tryEndInstr)); // needed to jump correctly to catch section
 
+            // catch (Exception ex)
+            // {
+            //    methodExecInfo.Exception = ex;
+            //    BaseAspectAttribute.OnException (methodExecInfo);
+            //    throw;
+            // }
             var exceptionVar = new VariableDefinition (method.Module.Import (typeof (Exception)));
             method.Body.Variables.Add (exceptionVar);
             var catchCode = new Collection<Instruction>();
@@ -226,7 +234,7 @@ namespace Shaspect.Builder
         }
 
 
-        private static void CallOnExit (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField, int offset)
+        private static Collection<Instruction> BuildOnExitCall (MethodDefinition method, VariableDefinition methodExecInfoVar, FieldDefinition aspectField)
         {
             // The code below is IL generated from:
             // AspectsCollection.Aspect_x.OnExit (methodExecInfo);
@@ -235,7 +243,7 @@ namespace Shaspect.Builder
             code.Add (OpCodes.Ldloc, methodExecInfoVar);
             code.Add (OpCodes.Callvirt, method.Module.Import (typeof (BaseAspectAttribute).GetMethod ("OnExit")));
 
-            method.Body.Instructions.Insert (offset, code);
+            return code;
         }
 
 

@@ -31,7 +31,6 @@ namespace Shaspect.Builder
                         AssemblyFile);
                 }
 
-                // TODO: implement OnExit
                 // TODO: changing of workflow (e.g. exit the method after OnEntry() is called)
                 // TODO: test aspect on static and instance constructors (they're compiled differently and OnEnter can be called differently)
                 // TODO: specifying targets (properties, methods). Now done only for ctor. Don't forget about Exclude.
