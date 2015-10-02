@@ -70,7 +70,7 @@
   <ItemGroup>
     <Compile Include="AspectInstantiateTests.cs" />
     <Compile Include="CalleeArgsTests.cs" />
-    <Compile Include="CallsFlowTests.cs" />
+    <Compile Include="ExecFlowTests.cs" />
     <Compile Include="InitializeTests.cs" />
     <Compile Include="NestedAspectsTest.cs" />
     <Compile Include="OnExitTests.cs" />

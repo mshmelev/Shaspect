@@ -37,6 +37,7 @@
     <Compile Include="BaseAspectAttribute.cs" />
     <Compile Include="ElementTargets.cs" />
     <Compile Include="MethodExecInfo.cs" />
+    <Compile Include="ExecFlow.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

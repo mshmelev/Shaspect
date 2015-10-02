@@ -141,13 +141,47 @@ namespace Shaspect.Builder
 
             // TODO: OnEntry should be called only in the case OnEntry is overridden somewhere in descendants of BaseAspectAttribute
             CallOnEntry (method, methodExecInfoVar, aspectField, methodCode.IndexOf (firstInstruction));
+            var checkFlowCode = BuildCheckExecFlow (method, methodExecInfoVar, retInstr, firstInstruction);
+            methodCode.Insert (methodCode.IndexOf (firstInstruction), checkFlowCode);
 
             var callOnSuccessCode = CallOnSuccess (method, methodExecInfoVar, aspectField, methodCode.LastIndexOf (retInstr));
 
-            AddCatchBlock (method, aspectField, methodExecInfoVar, firstInstruction, callOnSuccessCode.First());
+            AddCatchBlock (method, aspectField, methodExecInfoVar, retInstr, firstInstruction, callOnSuccessCode.First());
             AddFinallyBlock (method, aspectField, methodExecInfoVar, firstInstruction, retInstr);
+            
+            checkFlowCode = BuildCheckExecFlow (method, methodExecInfoVar, retInstr, callOnSuccessCode.Last().Next);     // for OnSuccess, needs to be inserted after FinallyBlock was created already
+            methodCode.Insert (methodCode.LastIndexOf (callOnSuccessCode.Last().Next), checkFlowCode);
 
             method.Body.OptimizeMacros();
+        }
+
+
+        private static Collection<Instruction> BuildCheckExecFlow (MethodDefinition method, VariableDefinition methodExecInfoVar, Instruction retInstr, Instruction insertBeforeInstr)
+        {
+            // if (execInfo.ExecFlow == ExecFlow.Return)
+            //   goto return_code;
+            // if (execInfo.ExecFlow == ExecFlow.ThrowException && execInfo.Exception!= null)
+            //   throw execInfo.Exception;
+            var code = new Collection<Instruction>();
+            code.Add (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("ExecFlow").GetMethod));
+            code.Add (OpCodes.Ldc_I4, (int) ExecFlow.Return);
+            var exceptionCheckInstr = Instruction.Create (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Bne_Un, exceptionCheckInstr);
+            code.Add (OpCodes.Leave, retInstr);
+
+            code.Add (exceptionCheckInstr); // OpCodes.Ldloc, methodExecInfoVar
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("ExecFlow").GetMethod));
+            code.Add (OpCodes.Ldc_I4, (int) ExecFlow.ThrowException);
+            code.Add (OpCodes.Bne_Un, insertBeforeInstr);
+            code.Add (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("Exception").GetMethod));
+            code.Add (OpCodes.Brfalse, insertBeforeInstr);
+            code.Add (OpCodes.Ldloc, methodExecInfoVar);
+            code.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("Exception").GetMethod));
+            code.Add (OpCodes.Throw);
+
+            return code;
         }
 
 
@@ -172,7 +206,7 @@ namespace Shaspect.Builder
         }
 
 
-        private static void AddCatchBlock (MethodDefinition method, FieldDefinition aspectField, VariableDefinition methodExecInfoVar, Instruction tryStartInstr, Instruction tryEndInstr)
+        private static void AddCatchBlock (MethodDefinition method, FieldDefinition aspectField, VariableDefinition methodExecInfoVar, Instruction retInstr, Instruction tryStartInstr, Instruction tryEndInstr)
         {
             var methodCode = method.Body.Instructions;
 
@@ -192,7 +226,10 @@ namespace Shaspect.Builder
             catchCode.Add (OpCodes.Ldloc, exceptionVar);
             catchCode.Add (OpCodes.Callvirt, method.Module.Import (typeof (MethodExecInfo).GetProperty ("Exception").SetMethod));
             catchCode.Add (BuildOnExceptionCall (method, methodExecInfoVar, aspectField));
-            catchCode.Add (OpCodes.Rethrow);
+            var rethrowInstr = Instruction.Create (OpCodes.Rethrow);
+            catchCode.Add (BuildCheckExecFlow (method, methodExecInfoVar, retInstr, rethrowInstr));
+            catchCode.Add (rethrowInstr);
+
             methodCode.Insert (methodCode.LastIndexOf (tryEndInstr), catchCode);
 
             method.Body.ExceptionHandlers.Add (new ExceptionHandler (ExceptionHandlerType.Catch)
