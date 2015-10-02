@@ -57,6 +57,7 @@
   <ItemGroup>
     <Compile Include="AspectDeclaration.cs" />
     <Compile Include="AspectsInjector.cs" />
+    <Compile Include="MethodAspectInjector.cs" />
     <Compile Include="Tools\CollectionExtensions.cs" />
     <Compile Include="NestingStrategy.cs" />
     <Compile Include="Tools\AssemblyResolver.cs" />
