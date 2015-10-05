@@ -53,7 +53,7 @@ namespace Shaspect.Builder
         public void Inject()
         {
             var methodCode = method.Body.Instructions;
-            var firstInstruction = methodCode.FirstOrDefault();
+            var firstInstruction = FindFirstInstruction();
 
             InitMethodExecInfoVar();
             MakeOneReturn();
@@ -75,6 +75,29 @@ namespace Shaspect.Builder
         }
 
 
+        /// <summary>
+        /// For regular methods the 1st instruction is really the 1st one. But for instance constructors the 1st instruction goes after calling base or overloaded contructurs.
+        /// </summary>
+        /// <returns></returns>
+        private Instruction FindFirstInstruction()
+        {
+            var methodCode = method.Body.Instructions;
+            if (method.IsSpecialName && !method.IsStatic && method.Name == ".ctor") // custom logis only for instance ctor
+            {
+                // find a call (not newobj) of other constructor
+                foreach (var instruction in methodCode)
+                {
+                    if (instruction.OpCode == OpCodes.Call)
+                    {
+                        var callingMethod = instruction.Operand as MethodDefinition;
+                        if (callingMethod != null && callingMethod.Name == ".ctor")
+                            return instruction.Next;
+                    }
+                }
+            }
+
+            return methodCode.First();
+        }
 
 
         private Collection<Instruction> BuildCheckExecFlow (Instruction insertBeforeInstr)
