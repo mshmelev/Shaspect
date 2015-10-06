@@ -38,7 +38,6 @@ namespace Shaspect.Builder
                 // TODO: aspect on interfaces
                 // TODO: aspect in a referenced assembly (assembly resolver); resolving using configuration from app.config
                 // TODO: handle signed assemblies
-                // TODO: aspect on parameters (e.g. check parameter is not null)
                 // TODO: optimize performance of the Builder
                 // TODO: process only once (check if there's Shaspect.Implementation namespace there
                 // TODO: support changing of method arguments (something like args.SetArgument (0, "12345") )

@@ -52,7 +52,6 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AspectDeclaration.cs" />
@@ -83,10 +82,10 @@
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy $(TargetDir)*.dll $(SolutionDir)Libs\ /Y
+    <PostBuildEvent>xcopy $(TargetDir)*.dll $(SolutionDir)build\ /Y
 if errorlevel 1 goto BuildEventFailed
 
-copy $(TargetDir)ShaspectBuild.targets $(SolutionDir)Libs\ /Y
+xcopy $(TargetDir)ShaspectBuild.targets $(SolutionDir)build\ /Y
 if errorlevel 1 goto BuildEventFailed
 exit 0
 

@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package >
+  <metadata minClientVersion="2.5">
+    <id>Shaspect</id>
+    <version>1.0.0</version>
+    <title>Shaspect</title>
+    <description>AOP library for C#, injects code using regular attributes</description>
+    <authors>Max Shmelev</authors>
+    <owners>Max Shmelev</owners>
+    <licenseUrl>https://raw.githubusercontent.com/mshmelev/Shaspect/master/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/mshmelev/Shaspect</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <copyright>Max Shmelev, 2015</copyright>
+    <tags>AOP Aspect</tags>
+  </metadata>
+  <files>
+    <file src="..\ShaspectBuilder\bin\Release\Shaspect.dll" target="build\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\Shaspect.dll" target="lib\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\ShaspectBuilder.dll" target="build\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\Mono.Cecil.dll" target="build\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\Mono.Cecil.Mdb.dll" target="build\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\Mono.Cecil.Pdb.dll" target="build\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\Mono.Cecil.Rocks.dll" target="build\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\ShaspectBuild.targets" target="build\net45\Shaspect.targets" />
+  </files>
+</package>
