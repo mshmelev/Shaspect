@@ -72,6 +72,7 @@
     <Compile Include="CalleeArgsTests.cs" />
     <Compile Include="ExecFlowTests.cs" />
     <Compile Include="InitializeTests.cs" />
+    <Compile Include="MethodExecInfoTests.cs" />
     <Compile Include="NestedAspectsTest.cs" />
     <Compile Include="OnExitTests.cs" />
     <Compile Include="OnExceptionTests.cs" />

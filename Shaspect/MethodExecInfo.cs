@@ -36,5 +36,12 @@ namespace Shaspect
         /// <see cref="BaseAspectAttribute.OnExit"/>.
         /// </summary>
         public ExecFlow ExecFlow { get; set; }
+
+
+        /// <summary>
+        /// Custom data. Can bu used to pass some object between <see cref="BaseAspectAttribute.OnEntry"/>, <see cref="BaseAspectAttribute.OnSuccess"/>, 
+        /// <see cref="BaseAspectAttribute.OnException"/>, <see cref="BaseAspectAttribute.OnExit"/>
+        /// </summary>
+        public object Data { get; set; }
     }
 }
