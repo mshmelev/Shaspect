@@ -4,7 +4,7 @@
     <id>Shaspect</id>
     <version>1.0.0</version>
     <title>Shaspect</title>
-    <description>AOP library for C#, injects code using regular attributes</description>
+    <description>AOP library for C#, injects code in methods using regular attributes</description>
     <authors>Max Shmelev</authors>
     <owners>Max Shmelev</owners>
     <licenseUrl>https://raw.githubusercontent.com/mshmelev/Shaspect/master/LICENSE</licenseUrl>
