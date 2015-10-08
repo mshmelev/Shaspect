@@ -4,6 +4,9 @@ using System.Reflection;
 
 namespace Shaspect
 {
+    /// <summary>
+    /// Base abstract class for any aspect.
+    /// </summary>
     [AttributeUsage (AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Constructor |
                      AttributeTargets.Method | AttributeTargets.Property)]
     public abstract class BaseAspectAttribute : Attribute
@@ -61,8 +64,14 @@ namespace Shaspect
 
 
         /// <summary>
-        /// Whether to exclude this aspect from an element.
+        /// Whether to exclude/remove aspect of this type (which could be set higher in the hieararchy) from an element
         /// </summary>
         public bool Exclude { get; set; }
+
+
+        /// <summary>
+        /// Whether to reoplace aspect of this type (which could be set higher in the hieararchy) with this one on an element
+        /// </summary>
+        public bool Replace { get; set; }
     }
 }

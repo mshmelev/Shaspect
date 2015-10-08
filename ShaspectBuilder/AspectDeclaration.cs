@@ -6,6 +6,7 @@ namespace Shaspect.Builder
     internal class AspectDeclaration
     {
         private bool? exclude;
+        private bool? replace;
         private ElementTargets? elementTargets;
 
 
@@ -23,6 +24,18 @@ namespace Shaspect.Builder
                     exclude = GetPropertyValue ("Exclude", false);
 
                 return exclude.Value;
+            }
+        }
+
+
+        public bool Replace
+        {
+            get
+            {
+                if (replace == null)
+                    replace = GetPropertyValue ("Replace", false);
+
+                return replace.Value;
             }
         }
 

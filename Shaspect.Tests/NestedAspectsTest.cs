@@ -89,6 +89,28 @@ namespace Shaspect.Tests
                 get;
                 set;
             }
+
+            [SimpleAspect("ReplaceMethod", Replace = true)]
+            public void ReplaceMethod() { }
+
+
+            [SimpleAspect ("ReplaceProperty", Replace = true)]
+            public int ReplaceProperty
+            {
+                [SimpleAspect ("ReplaceProperty_Get")]
+                get;
+                set;
+            }
+
+            [SimpleAspect ("ReplacePropertyMultiAspects")]
+            [SimpleAspect2 ("ReplacePropertyMultiAspects2")]
+            public int ReplacePropertyMultiAspects
+            {
+                [SimpleAspect ("ReplacePropertyMultiAspects_Get", Replace = true)]
+                [SimpleAspect2 ("ReplacePropertyMultiAspects2_Get", Replace = true)]
+                get;
+                set;
+            }
         }
 
         private readonly TestClass t;
@@ -112,7 +134,7 @@ namespace Shaspect.Tests
         public void AspectOnMethod_FromDeclaringType()
         {
             t.EmptyMethod();
-            Assert.True (callsBag.Contains ("Class"));
+            Assert.Contains ("Class", callsBag);
         }
 
 
@@ -120,8 +142,8 @@ namespace Shaspect.Tests
         public void AspectOnMethod_AndDeclaringType()
         {
             t.AspectMethod();
-            Assert.True (callsBag.Contains ("Class"));
-            Assert.True (callsBag.Contains ("AspectMethod"));
+            Assert.Contains ("Class", callsBag);
+            Assert.Contains ("AspectMethod", callsBag);
         }
 
 
@@ -129,7 +151,7 @@ namespace Shaspect.Tests
         public void AspectOnProperty_FromDeclaringType()
         {
             t.Prop1 = 42;
-            Assert.True (callsBag.Contains ("Class"));
+            Assert.Contains ("Class", callsBag);
         }
 
 
@@ -137,12 +159,12 @@ namespace Shaspect.Tests
         public void AspectOnProperty_AndDeclaringType()
         {
             t.AspectProperty = 42;
-            Assert.True (callsBag.Contains ("Class"));
-            Assert.True (callsBag.Contains ("AspectProperty"));
-            Assert.False (callsBag.Contains ("AspectProperty_Get"));
+            Assert.Contains ("Class", callsBag);
+            Assert.Contains ("AspectProperty", callsBag);
+            Assert.DoesNotContain ("AspectProperty_Get", callsBag);
 
             int v = t.AspectProperty;
-            Assert.True (callsBag.Contains ("AspectProperty_Get"));
+            Assert.Contains ("AspectProperty_Get", callsBag);
         }
 
 
@@ -162,7 +184,7 @@ namespace Shaspect.Tests
 
             int i = t.ExcludeProperty;
             Assert.Equal (1, callsBag.Count);
-            Assert.True (callsBag.Contains ("ExcludeProperty_Get"));
+            Assert.Contains ("ExcludeProperty_Get", callsBag);
         }
 
 
@@ -171,14 +193,54 @@ namespace Shaspect.Tests
         {
             t.ExcludePropertyMultiAspects = 42;
             Assert.Equal (1, callsBag.Count);
-            Assert.True (callsBag.Contains ("ExcludePropertyMultiAspects2"));
+            Assert.Contains ("ExcludePropertyMultiAspects2", callsBag);
 
             callsBag.Clear();
             int i = t.ExcludePropertyMultiAspects;
             Assert.Equal (1, callsBag.Count);
-            Assert.True (callsBag.Contains ("ExcludePropertyMultiAspects_Get"));
+            Assert.Contains ("ExcludePropertyMultiAspects_Get", callsBag);
         }
 
+
+        [Fact]
+        public void Replace_OnMethod()
+        {
+            t.ReplaceMethod();
+            Assert.Equal (1, callsBag.Count);
+            Assert.Contains ("ReplaceMethod", callsBag);
+        }
+
+
+        [Fact]
+        public void Replace_OnProperty()
+        {
+            t.ReplaceProperty = 42;
+            Assert.Equal (1, callsBag.Count);
+            Assert.Contains ("ReplaceProperty", callsBag);
+            
+            callsBag.Clear();
+            int i = t.ReplaceProperty;
+            Assert.Equal (2, callsBag.Count);
+            Assert.Contains ("ReplaceProperty", callsBag);
+            Assert.Contains ("ReplaceProperty_Get", callsBag);
+        }
+
+
+        [Fact]
+        public void Replace_OnProperty_MultiAspects()
+        {
+            t.ReplacePropertyMultiAspects = 42;
+            Assert.Equal (3, callsBag.Count);
+            Assert.Contains ("Class", callsBag);
+            Assert.Contains ("ReplacePropertyMultiAspects", callsBag);
+            Assert.Contains ("ReplacePropertyMultiAspects2", callsBag);
+
+            callsBag.Clear();
+            int i = t.ReplacePropertyMultiAspects;
+            Assert.Equal (2, callsBag.Count);
+            Assert.Contains ("ReplacePropertyMultiAspects_Get", callsBag);
+            Assert.Contains ("ReplacePropertyMultiAspects2_Get", callsBag);
+        }
 
 
     }
