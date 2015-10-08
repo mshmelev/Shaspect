@@ -16,6 +16,7 @@
   <files>
     <file src="..\ShaspectBuilder\bin\Release\Shaspect.dll" target="build\net45\" />
     <file src="..\ShaspectBuilder\bin\Release\Shaspect.dll" target="lib\net45\" />
+    <file src="..\ShaspectBuilder\bin\Release\Shaspect.xml" target="lib\net45\" />
     <file src="..\ShaspectBuilder\bin\Release\ShaspectBuilder.dll" target="build\net45\" />
     <file src="..\ShaspectBuilder\bin\Release\Mono.Cecil.dll" target="build\net45\" />
     <file src="..\ShaspectBuilder\bin\Release\Mono.Cecil.Mdb.dll" target="build\net45\" />

@@ -3,8 +3,15 @@
 
 namespace Shaspect
 {
+    /// <summary>
+    /// Information about current method execution context
+    /// </summary>
     public class MethodExecInfo
     {
+        /// <summary>
+        /// .ctor
+        /// </summary>
+        /// <param name="args"></param>
         public MethodExecInfo(object[] args)
         {
             Arguments = args;
