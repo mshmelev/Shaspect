@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using Xunit;
 
@@ -10,6 +11,7 @@ namespace Shaspect.Tests
     {
         private static readonly object sync = new object();
         private static readonly List<string> data= new List<string>();
+        private static readonly List<MethodBase> methods = new List<MethodBase>();
         private readonly TestClass t;
 
 
@@ -20,6 +22,8 @@ namespace Shaspect.Tests
                 data.Add (methodExecInfo.Data+"");
                 methodExecInfo.Data = "OnEntry";
                 data.Add (methodExecInfo.Data+"");
+
+                methods.Add (methodExecInfo.Method);
             }
 
 
@@ -28,6 +32,8 @@ namespace Shaspect.Tests
                 data.Add (methodExecInfo.Data+"");
                 methodExecInfo.Data = "OnExit";
                 data.Add (methodExecInfo.Data+"");
+
+                methods.Add (methodExecInfo.Method);
             }
         }
 
@@ -51,6 +57,7 @@ namespace Shaspect.Tests
             Monitor.Enter (sync);
             t = new TestClass();
             data.Clear();
+            methods.Clear();
         }
 
 
@@ -76,6 +83,16 @@ namespace Shaspect.Tests
 
             Assert.Equal (new[] {"", "OnEntry", "", "OnEntry", "OnEntry", "OnExit", "OnEntry", "OnExit"}, data);
         }
+
+
+        [Fact]
+        public void MethodInfo_Passed()
+        {
+            t.Method2();
+
+            Assert.Equal (new[] {typeof(TestClass).GetMethod ("Method2"), typeof(TestClass).GetMethod ("Method2")}, methods);
+        }
+
 
 
 

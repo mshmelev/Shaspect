@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 
 
 namespace Shaspect
@@ -12,9 +13,11 @@ namespace Shaspect
         /// .ctor
         /// </summary>
         /// <param name="args"></param>
-        public MethodExecInfo(object[] args)
+        /// <param name="method"></param>
+        public MethodExecInfo(object[] args, MethodBase method)
         {
             Arguments = args;
+            Method = method;
         }
 
         /// <summary>
@@ -50,5 +53,11 @@ namespace Shaspect
         /// <see cref="BaseAspectAttribute.OnException"/>, <see cref="BaseAspectAttribute.OnExit"/>
         /// </summary>
         public object Data { get; set; }
+
+
+        /// <summary>
+        /// Currently executing method info
+        /// </summary>
+        public MethodBase Method { get; private set; }
     }
 }

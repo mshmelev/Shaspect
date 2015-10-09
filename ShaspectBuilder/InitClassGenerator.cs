@@ -86,7 +86,7 @@ namespace Shaspect.Builder
 
 
 
-        public FieldDefinition BuildAspectInitCode (MethodDefinition method, CustomAttribute aspect)
+        public void BuildAspectInitCode (MethodDefinition method, CustomAttribute aspect, out FieldDefinition aspectInstanceField, out FieldDefinition methodInfoField)
         {
             var ctor = initCtor.Body.Instructions;
 
@@ -100,24 +100,28 @@ namespace Shaspect.Builder
             InitAspectFields (aspect, aspectInstanceVar);
             InitAspectProperties (aspect, aspectInstanceVar);
 
-            // aspect.Initialize (MethodBase.GetMethodFromHandle (methodToken, methodDeclaringType));
-            ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
+            // Method_0 = MethodBase.GetMethodFromHandle (methodToken, methodDeclaringType);
+            methodInfoField = new FieldDefinition ("Method_"+ EmittedAspects, FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, initCtor.Module.Import (typeof (MethodBase)));
+            initClass.Fields.Add (methodInfoField);
             ctor.Add (OpCodes.Ldtoken, method);
             ctor.Add (OpCodes.Ldtoken, method.DeclaringType);
             ctor.Add (OpCodes.Call, initCtor.Module.Import (typeof (MethodBase).GetMethod ("GetMethodFromHandle",
                 new[] {typeof (RuntimeMethodHandle), typeof (RuntimeTypeHandle)})));
-            ctor.Add (OpCodes.Callvirt, initCtor.Module.Import (typeof (BaseAspectAttribute).GetMethod ("Initialize")));
+            ctor.Add (OpCodes.Stsfld, methodInfoField);
 
+            // aspect.Initialize (Method_0);
+            ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
+            ctor.Add (OpCodes.Ldsfld, methodInfoField);
+            ctor.Add (OpCodes.Callvirt, initCtor.Module.Import (typeof (BaseAspectAttribute).GetMethod ("Initialize")));
+            
             // Store created aspect in a global variable
-            var aspectInstanceField = new FieldDefinition ("Aspect_" + EmittedAspects,
+            aspectInstanceField = new FieldDefinition ("Aspect_" + EmittedAspects,
                 FieldAttributes.Public | FieldAttributes.Static | FieldAttributes.InitOnly, aspect.AttributeType);
             initClass.Fields.Add (aspectInstanceField);
             ctor.Add (OpCodes.Ldloc, aspectInstanceVar);
             ctor.Add (OpCodes.Stsfld, aspectInstanceField);
 
             ++EmittedAspects;
-
-            return aspectInstanceField;
         }
 
 

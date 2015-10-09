@@ -92,9 +92,10 @@ namespace Shaspect.Builder
                 if (!IsApplicableElementTarget (method, aspect))
                     continue;
 
-                var aspectField = initClassGenerator.BuildAspectInitCode (method, aspect.Aspect);
+                FieldDefinition aspectField, methodField;
+                initClassGenerator.BuildAspectInitCode (method, aspect.Aspect, out aspectField, out methodField);
 
-                var methodInjector = new MethodAspectInjector (method, aspectField);
+                var methodInjector = new MethodAspectInjector (method, aspectField, methodField);
                 methodInjector.Inject();
             }
         }

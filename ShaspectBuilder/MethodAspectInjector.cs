@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
@@ -13,14 +14,16 @@ namespace Shaspect.Builder
     {
         private readonly MethodDefinition method;
         private readonly FieldDefinition aspectStaticField;
+        private readonly FieldDefinition methodStaticField;
         private VariableDefinition methodExecInfoVar;
         private Instruction returnInstr;
 
 
-        public MethodAspectInjector(MethodDefinition method, FieldDefinition aspectStaticField)
+        public MethodAspectInjector(MethodDefinition method, FieldDefinition aspectStaticField, FieldDefinition methodStaticField)
         {
             this.method = method;
             this.aspectStaticField = aspectStaticField;
+            this.methodStaticField = methodStaticField;
         }
 
 
@@ -244,19 +247,19 @@ namespace Shaspect.Builder
         private void InitMethodExecInfoVar()
         {
             // The code below is IL generated from:
-            // var methodExecInfo = new MethodExecInfo (new object[] {param1, param2, ...})
+            // var methodExecInfo = new MethodExecInfo (new object[] {arg1, arg2, ...}, Method_0)
             var argsArrVar = new VariableDefinition (method.Module.Import (typeof (object[])));
             method.Body.Variables.Add (argsArrVar);
 
             methodExecInfoVar = new VariableDefinition (method.Module.Import (typeof (MethodExecInfo)));
             method.Body.Variables.Add (methodExecInfoVar);
 
+            // arguments
             var code = new Collection<Instruction>();
             code.Add (OpCodes.Ldc_I4, method.Parameters.Count);
             code.Add (OpCodes.Newarr, method.Module.Import (typeof (object)));
             code.Add (OpCodes.Stloc, argsArrVar);
             code.Add (OpCodes.Ldloc, argsArrVar);
-
             for (int i = 0; i < method.Parameters.Count; ++i)
             {
                 var param = method.Parameters[i];
@@ -278,7 +281,10 @@ namespace Shaspect.Builder
                 code.Add (OpCodes.Ldloc, argsArrVar);
             }
 
-            code.Add (OpCodes.Newobj, method.Module.Import (typeof (MethodExecInfo).GetConstructor (new[] {typeof (object[])})));
+            // method info
+            code.Add (OpCodes.Ldsfld, methodStaticField);
+
+            code.Add (OpCodes.Newobj, method.Module.Import (typeof (MethodExecInfo).GetConstructor (new[] {typeof (object[]), typeof (MethodBase)})));
             code.Add (OpCodes.Stloc, methodExecInfoVar);
 
             method.Body.Instructions.Insert (0, code);
