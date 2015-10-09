@@ -48,6 +48,7 @@ namespace Shaspect.Builder
         private readonly ModuleDefinition mainModule;
         private TypeDefinition initClass;
         private MethodDefinition initCtor;
+        private const string NamespacePrefix = "Shaspect.Implementation_";
 
         public int EmittedAspects { get; private set; }
 
@@ -61,10 +62,16 @@ namespace Shaspect.Builder
         }
 
 
+        public static bool IsInitClassCreated (AssemblyDefinition assembly)
+        {
+            return assembly.MainModule.Types.Any (type => type.Namespace.StartsWith (NamespacePrefix));
+        }
+
+
         private void CreateAspectsCollectionClass()
         {
             initClass = new TypeDefinition (
-                "Shaspect.Implementation_"+ mainModule.Assembly.FullName.GetHashCode().ToString("x"),
+                NamespacePrefix+ mainModule.Assembly.FullName.GetHashCode().ToString("x"),
                 "AspectsCollection",
                 TypeAttributes.Class | TypeAttributes.Abstract | TypeAttributes.AnsiClass | TypeAttributes.AutoClass |
                 TypeAttributes.NotPublic | TypeAttributes.Sealed,

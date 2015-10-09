@@ -2,7 +2,7 @@
 <package >
   <metadata minClientVersion="2.5">
     <id>Shaspect</id>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <title>Shaspect</title>
     <description>AOP library for C#, injects code in methods using regular attributes</description>
     <authors>Max Shmelev</authors>

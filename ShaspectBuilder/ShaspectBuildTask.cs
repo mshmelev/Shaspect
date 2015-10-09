@@ -24,9 +24,9 @@ namespace Shaspect.Builder
                 var stopwatch = Stopwatch.StartNew();
 
                 var injector = new AspectsInjector (AssemblyFile, References);
-                if (injector.ProcessAssembly() == 0)
+                if (!injector.ProcessAssembly())
                 {
-                    Log.LogWarning (
+                    Log.LogMessage (
                         "No aspects detected in {0}. You can uninstall Shaspect package for this assembly to speed up the build.",
                         AssemblyFile);
                 }

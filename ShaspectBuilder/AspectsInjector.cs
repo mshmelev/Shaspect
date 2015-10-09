@@ -26,12 +26,15 @@ namespace Shaspect.Builder
         }
 
 
-        public int ProcessAssembly()
+        public bool ProcessAssembly()
         {
             LoadAssembly();
-            
-            var assemblyAspects = Enumerable.Empty<AspectDeclaration>().NestWith (GetAspects (assembly, assembly.MainModule));
+
+            if (InitClassGenerator.IsInitClassCreated (assembly))       // prevent double processing
+                return true;
+
             initClassGenerator = new InitClassGenerator (assembly);
+            var assemblyAspects = Enumerable.Empty<AspectDeclaration>().NestWith (GetAspects (assembly, assembly.MainModule));
 
             foreach (var module in assembly.Modules)
             {
@@ -76,7 +79,7 @@ namespace Shaspect.Builder
             if (initClassGenerator.EmittedAspects > 0)
                 SaveAssembly();
 
-            return initClassGenerator.EmittedAspects;
+            return initClassGenerator.EmittedAspects > 0;
         }
 
 
