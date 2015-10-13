@@ -15,6 +15,8 @@ namespace Shaspect.Builder
         public string References { get; set; }
 
         public string KeyFile { get; set; }
+        
+        public string KeyContainer { get; set; }
 
 
         public override bool Execute()
@@ -23,7 +25,7 @@ namespace Shaspect.Builder
             {
                 var stopwatch = Stopwatch.StartNew();
 
-                var injector = new AspectsInjector (AssemblyFile, References);
+                var injector = new AspectsInjector (AssemblyFile, References, KeyFile, KeyContainer);
                 if (!injector.ProcessAssembly())
                 {
                     Log.LogMessage (
@@ -43,7 +45,5 @@ namespace Shaspect.Builder
 
             return false;
         }
-
-
     }
 }

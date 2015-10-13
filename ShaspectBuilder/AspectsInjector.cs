@@ -2,11 +2,15 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Mdb;
 using Mono.Cecil.Pdb;
 using Mono.Cecil.Rocks;
 using Shaspect.Builder.Tools;
+using ICustomAttributeProvider = Mono.Cecil.ICustomAttributeProvider;
+using MethodAttributes = Mono.Cecil.MethodAttributes;
+using TypeAttributes = Mono.Cecil.TypeAttributes;
 
 
 namespace Shaspect.Builder
@@ -15,14 +19,18 @@ namespace Shaspect.Builder
     {
         private readonly string assemblyFile;
         private readonly string references;
+        private readonly string keyFilePath;
+        private readonly string keyContainerName;
         private AssemblyDefinition assembly;
         private InitClassGenerator initClassGenerator;
 
 
-        public AspectsInjector(string assemblyFile, string references)
+        public AspectsInjector (string assemblyFile, string references, string keyFilePath, string keyContainerName)
         {
             this.assemblyFile = assemblyFile;
             this.references = references;
+            this.keyFilePath = keyFilePath;
+            this.keyContainerName = keyContainerName;
         }
 
 
@@ -156,6 +164,7 @@ namespace Shaspect.Builder
         {
             var writeParams = new WriterParameters();
 
+            // debug symbols
             if (File.Exists (Path.ChangeExtension (assemblyFile, ".pdb")))
             {
                 writeParams.WriteSymbols = true;
@@ -167,7 +176,33 @@ namespace Shaspect.Builder
                 writeParams.SymbolWriterProvider = new MdbWriterProvider();
             }
 
+            // strong name signing
+            var signingKey = RetrieveSigningKey();
+            if (signingKey != null)
+                writeParams.StrongNameKeyPair = signingKey;
+
             assembly.Write (assemblyFile, writeParams);
+        }
+
+
+        private StrongNameKeyPair RetrieveSigningKey()
+        {
+            if (!String.IsNullOrEmpty (keyContainerName))
+                return new StrongNameKeyPair (keyContainerName);
+
+            if (!String.IsNullOrEmpty (keyFilePath))
+            {
+                string filePath = keyFilePath;
+                if (filePath.EndsWith (".pfx", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    filePath = Path.ChangeExtension (filePath, ".snk");
+                    if (!File.Exists (filePath))
+                        throw new ApplicationException (".pfx file cannot be used to re-sign assembly. Either import the .pfx certificate, or put .snk file beside.");
+                }
+                return new StrongNameKeyPair (File.ReadAllBytes (filePath));
+            }
+
+            return null;
         }
 
 

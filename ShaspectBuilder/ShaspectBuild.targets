@@ -1,7 +1,26 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <UsingTask TaskName="ShaspectBuildTask" AssemblyFile="ShaspectBuilder.dll"/>
-  <Target Name="AfterCompile" DependsOnTargets="CoreCompile">
-		<ShaspectBuildTask AssemblyFile="@(IntermediateAssembly)" References="@(ReferencePath)" KeyFile="$(KeyOriginatorFile)"/>
+
+	<Choose>
+		<When Condition="$(KeyOriginatorFile) != '' And $(KeyOriginatorFile) != '*Undefined*' And '$(SignAssembly)' == 'true'">
+			<PropertyGroup>
+				<KeyFilePath>$(KeyOriginatorFile)</KeyFilePath>
+			</PropertyGroup>
+		</When>
+		<When Condition="$(AssemblyOriginatorKeyFile) != '' And $(AssemblyOriginatorKeyFile) != '*Undefined*' And $(SignAssembly) == 'true'">
+			<PropertyGroup>
+				<KeyFilePath>$(AssemblyOriginatorKeyFile)</KeyFilePath>
+			</PropertyGroup>
+		</When>
+		<Otherwise >
+			<PropertyGroup>
+				<KeyFilePath></KeyFilePath>
+			</PropertyGroup>
+		</Otherwise>
+	</Choose>
+
+  <Target Name="AfterCompile" DependsOnTargets="CoreCompile;ResolveKeySource">
+		<ShaspectBuildTask AssemblyFile="@(IntermediateAssembly)" References="@(ReferencePath)" KeyFile="$(KeyFilePath)" KeyContainer="$(KeyContainerName)"/>
   </Target>
 </Project>
