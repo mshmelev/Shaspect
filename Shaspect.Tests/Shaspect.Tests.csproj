@@ -81,6 +81,7 @@
     <Compile Include="OnExitTests.cs" />
     <Compile Include="OnExceptionTests.cs" />
     <Compile Include="OnSuccessTests.cs" />
+    <Compile Include="OrderingAspectsTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="OnEntryBasicTests.cs" />
     <Compile Include="ReturnValueTests.cs" />

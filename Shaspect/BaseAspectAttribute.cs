@@ -73,5 +73,15 @@ namespace Shaspect
         /// Whether to reoplace aspect of this type (which could be set higher in the hieararchy) with this one on an element
         /// </summary>
         public bool Replace { get; set; }
+
+
+        /// <summary>
+        /// Specifies order in which the aspect is called.
+        /// 
+        /// Should be used if multiple aspects are applied for a method (also if they are nested from class or assembly level).
+        /// The order number is global for the whole assembly and all the aspect types.
+        /// The default aspect execution order is from bottom to top (method-level aspects, then class-level, then assembly-level).
+        /// </summary>
+        public int Order { get; set; }
     }
 }

@@ -85,7 +85,9 @@ namespace Shaspect.Builder
 
         private void ProcessMethod (MethodDefinition method, IEnumerable<AspectDeclaration> externalAspects)
         {
-            var aspects = externalAspects.NestWith (GetAspects (method, method.Module));
+            var aspects = externalAspects
+                .NestWith (GetAspects (method, method.Module))
+                .OrderByDescending (a => a);                  // Reverse order because aspects are injected in reverse order
 
             foreach (var aspect in aspects)
             {
