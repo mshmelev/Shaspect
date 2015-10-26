@@ -74,6 +74,7 @@
   <ItemGroup>
     <Compile Include="AspectInstantiateTests.cs" />
     <Compile Include="CalleeArgsTests.cs" />
+    <Compile Include="ElementTargetTests.cs" />
     <Compile Include="ExecFlowTests.cs" />
     <Compile Include="InitializeTests.cs" />
     <Compile Include="MethodExecInfoTests.cs" />

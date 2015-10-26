@@ -14,6 +14,13 @@ namespace Shaspect.Builder.Tools
         }
 
 
+        public static bool IsCompilerGenerated (this MethodDefinition method)
+        {
+            string s = method.Module.Import (typeof (CompilerGeneratedAttribute)).FullName;
+            return method.CustomAttributes.Any (a => a.AttributeType.FullName == s);
+        }
+
+
         public static bool IsInheritedFrom (this TypeReference childType, TypeReference baseType)
         {
             try

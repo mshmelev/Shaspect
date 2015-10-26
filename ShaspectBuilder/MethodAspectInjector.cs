@@ -85,7 +85,7 @@ namespace Shaspect.Builder
         private Instruction FindFirstInstruction()
         {
             var methodCode = method.Body.Instructions;
-            if (method.IsSpecialName && !method.IsStatic && method.Name == ".ctor") // custom logis only for instance ctor
+            if (method.IsSpecialName && !method.IsStatic && method.Name == ".ctor") // custom logic for instance ctor only
             {
                 // find a call (not newobj) of other constructor
                 foreach (var instruction in methodCode)

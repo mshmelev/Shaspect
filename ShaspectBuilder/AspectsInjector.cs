@@ -114,28 +114,29 @@ namespace Shaspect.Builder
         }
 
 
-
         private bool IsApplicableElementTarget (MethodDefinition method, AspectDeclaration aspect)
         {
             var elemetTargets = aspect.ElementTargets;
             if (elemetTargets == ElementTargets.Default)
                 return true;
 
-            if ((method.Attributes & MethodAttributes.Static) == MethodAttributes.Static
-                && method.Name == ".cctor"
-                && (elemetTargets & ElementTargets.StaticConstructor) != ElementTargets.StaticConstructor)
-            {
-                return false;
-            }
+            bool isCCtor = method.IsStatic && method.IsConstructor;
+            bool isCtor = !method.IsStatic && method.IsConstructor;
+            bool isProperty = method.IsSpecialName && method.IsCompilerGenerated() && (method.Name.StartsWith ("get_") || method.Name.StartsWith ("set_"));
 
-            if ((method.Attributes & MethodAttributes.Static) != MethodAttributes.Static
-                && method.Name == ".ctor"
-                && (elemetTargets & ElementTargets.InstanceConstructor) != ElementTargets.InstanceConstructor)
-            {
-                return false;
-            }
+            if ((elemetTargets & ElementTargets.StaticConstructor) == ElementTargets.StaticConstructor && isCCtor)
+                return true;
 
-            return true;
+            if ((elemetTargets & ElementTargets.InstanceConstructor) == ElementTargets.InstanceConstructor && isCtor)
+                return true;
+
+            if ((elemetTargets & ElementTargets.Property) == ElementTargets.Property && isProperty)
+                return true;
+
+            if ((elemetTargets & ElementTargets.Method) == ElementTargets.Method && !(isCtor || isCCtor || isProperty))
+                return true;
+
+            return false;
         }
 
 
