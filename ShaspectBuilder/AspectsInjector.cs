@@ -54,7 +54,7 @@ namespace Shaspect.Builder
                     if (type.IsInheritedFrom (baseAspectType))       // ignore aspects themselves
                         continue;
 
-                    var typeAspects = assemblyAspects.NestWith (GetAspects (type, module));
+                    var typeAspects = GetAllNestedTypesAspects (type, assemblyAspects);
                     var processedMethods = new HashSet<uint>();
 
                     // properties
@@ -88,6 +88,20 @@ namespace Shaspect.Builder
                 SaveAssembly();
 
             return initClassGenerator.EmittedAspects > 0;
+        }
+
+
+        private List<AspectDeclaration> GetAllNestedTypesAspects (TypeDefinition type, List<AspectDeclaration> assemblyAspects)
+        {
+            var declaringType = type.DeclaringType;
+
+            List<AspectDeclaration> higherAspects;
+            if (declaringType != null)
+                higherAspects= GetAllNestedTypesAspects (declaringType, assemblyAspects);
+            else
+                higherAspects= assemblyAspects;
+            
+            return higherAspects.NestWith (GetAspects (type, type.Module));
         }
 
 

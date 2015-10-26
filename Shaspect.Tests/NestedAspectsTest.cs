@@ -53,6 +53,14 @@ namespace Shaspect.Tests
         [SimpleAspect("Class")]
         private class TestClass
         {
+            public class NestedClass
+            {
+                public void EmptyMethod() { }
+
+                [SimpleAspect("AspectMethod")]
+                public void AspectMethod() { }
+            }
+
             public void EmptyMethod() { }
 
             public int Prop1 { get; set; }
@@ -94,6 +102,10 @@ namespace Shaspect.Tests
             public void ReplaceMethod() { }
 
 
+            [SimpleAspect2("ReplaceMethod2", Replace = true)]
+            public void ReplaceMethod2() { }
+
+
             [SimpleAspect ("ReplaceProperty", Replace = true)]
             public int ReplaceProperty
             {
@@ -131,7 +143,7 @@ namespace Shaspect.Tests
 
 
         [Fact]
-        public void AspectOnMethod_FromDeclaringType()
+        public void Aspect_On_Method_From_DeclaringType()
         {
             t.EmptyMethod();
             Assert.Contains ("Class", callsBag);
@@ -212,6 +224,16 @@ namespace Shaspect.Tests
 
 
         [Fact]
+        public void Replace_OnMethod_Without_Having_Replacing_Aspect()
+        {
+            t.ReplaceMethod2();
+            Assert.Equal (2, callsBag.Count);
+            Assert.Contains ("ReplaceMethod2", callsBag);
+            Assert.Contains ("Class", callsBag);
+        }
+
+
+        [Fact]
         public void Replace_OnProperty()
         {
             t.ReplaceProperty = 42;
@@ -242,6 +264,29 @@ namespace Shaspect.Tests
             Assert.Contains ("ReplacePropertyMultiAspects2_Get", callsBag);
         }
 
+
+        [Fact]
+        public void Aspect_On_Method_From_Declaring_Declaring_Type()
+        {
+            var t2 = new TestClass.NestedClass();
+            callsBag.Clear();
+
+            t2.EmptyMethod();
+            Assert.Contains ("Class", callsBag);
+        }
+
+
+        [Fact]
+        public void Aspect_On_Method_AND_From_Declaring_Declaring_Type()
+        {
+            var t2 = new TestClass.NestedClass();
+            callsBag.Clear();
+
+            t2.AspectMethod();
+            Assert.Contains ("Class", callsBag);
+            Assert.Contains ("AspectMethod", callsBag);
+            Assert.Equal (2, callsBag.Count);
+        }
 
     }
 }
