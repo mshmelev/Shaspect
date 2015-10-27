@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Mono.Cecil;
+using Shaspect.Builder.Tools;
 
 
 namespace Shaspect.Builder
@@ -9,34 +11,51 @@ namespace Shaspect.Builder
     /// </summary>
     internal static class NestingStrategy
     {
-        public static List<AspectDeclaration> NestWith (this IEnumerable<AspectDeclaration> aspects, IEnumerable<AspectDeclaration> nestedAspects)
+        public static IEnumerable<AspectDeclaration> GetApplicableAspects (IEnumerable<AspectDeclaration> aspects, MethodDefinition method)
         {
-            var replacingAspects = new List<AspectDeclaration>();
-            var excludingAspects = new List<AspectDeclaration>();
-            var appendingAspects = new List<AspectDeclaration>();
-            foreach (var aspect in nestedAspects)
+            aspects = aspects.OrderBy (a => a.NestingLevel);
+            var res = new List<AspectDeclaration>();
+
+            foreach (var aspect in aspects)
             {
-                if (aspect.Replace)
-                    replacingAspects.Add (aspect);
-                if (aspect.Exclude)
-                    excludingAspects.Add (aspect);
-                if (!aspect.Replace && !aspect.Exclude)
-                    appendingAspects.Add (aspect);
+                if (!IsApplicableElementTarget (aspect, method))
+                    continue;
+
+                if (aspect.Exclude || aspect.Replace)
+                    res.RemoveAll (a => a.Name == aspect.Name);
+
+                if (!aspect.Exclude)
+                    res.Add (aspect);
             }
 
-            var res = aspects.ToList();
-
-            // merge considering the Replace property
-            res.RemoveAll (a => replacingAspects.Any (ra => ra.Aspect.AttributeType.FullName == a.Aspect.AttributeType.FullName));
-            res.AddRange (replacingAspects);
-
-            // merge considering the Exclude property
-            res.RemoveAll (a => excludingAspects.Any (ea => ea.Aspect.AttributeType.FullName == a.Aspect.AttributeType.FullName));
-
-            // add the rest
-            res.AddRange (appendingAspects);
-
             return res;
+        }
+
+
+
+        private static bool IsApplicableElementTarget (AspectDeclaration aspect, MethodDefinition method)
+        {
+            var elemetTargets = aspect.ElementTargets;
+            if (elemetTargets == ElementTargets.Default)
+                return true;
+
+            bool isCCtor = method.IsStatic && method.IsConstructor;
+            bool isCtor = !method.IsStatic && method.IsConstructor;
+            bool isProperty = method.IsSpecialName && method.IsCompilerGenerated() && (method.Name.StartsWith ("get_") || method.Name.StartsWith ("set_"));
+
+            if ((elemetTargets & ElementTargets.StaticConstructor) == ElementTargets.StaticConstructor && isCCtor)
+                return true;
+
+            if ((elemetTargets & ElementTargets.InstanceConstructor) == ElementTargets.InstanceConstructor && isCtor)
+                return true;
+
+            if ((elemetTargets & ElementTargets.Property) == ElementTargets.Property && isProperty)
+                return true;
+
+            if ((elemetTargets & ElementTargets.Method) == ElementTargets.Method && !(isCtor || isCCtor || isProperty))
+                return true;
+
+            return false;
         }
 
     }

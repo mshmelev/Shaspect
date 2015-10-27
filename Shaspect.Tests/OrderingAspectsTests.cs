@@ -89,6 +89,20 @@ namespace Shaspect.Tests
             public void MethodWithManyAspects_Reverse()
             {
             }
+
+
+            [SimpleAspect("NestedClass")]
+            public class NestedClass
+            {
+                [SimpleAspect("NestedClass2")]
+                public class NestedClass2
+                {
+                    [SimpleAspect("SimpleMethod")]
+                    public void SimpleMethod()
+                    {
+                    }
+                }
+            }
         }
 
 
@@ -110,7 +124,6 @@ namespace Shaspect.Tests
         public void Default_Order_Is_Bottom_Up()
         {
             int i = t.SimpleProp;
-            
             Assert.Equal (new[] {"SimpleProp_get", "SimpleProp", "Class"}, calls);
         }
 
@@ -132,6 +145,16 @@ namespace Shaspect.Tests
             calls.Clear();
             t.MethodWithManyAspects_Reverse();
             Assert.Equal (new[] {"Class", "Method3", "Method2", "Method1"}, calls);
+        }
+
+
+        [Fact]
+        public void Default_Order_On_Nested_Classes()
+        {
+            var t2 = new TestClass.NestedClass.NestedClass2();
+            calls.Clear();
+            t2.SimpleMethod();
+            Assert.Equal (new[] {"SimpleMethod", "NestedClass2", "NestedClass", "Class"}, calls);
         }
     }
 }

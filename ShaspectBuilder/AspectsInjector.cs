@@ -9,7 +9,6 @@ using Mono.Cecil.Pdb;
 using Mono.Cecil.Rocks;
 using Shaspect.Builder.Tools;
 using ICustomAttributeProvider = Mono.Cecil.ICustomAttributeProvider;
-using MethodAttributes = Mono.Cecil.MethodAttributes;
 using TypeAttributes = Mono.Cecil.TypeAttributes;
 
 
@@ -42,7 +41,7 @@ namespace Shaspect.Builder
                 return true;
 
             initClassGenerator = new InitClassGenerator (assembly);
-            var assemblyAspects = Enumerable.Empty<AspectDeclaration>().NestWith (GetAspects (assembly, assembly.MainModule));
+            var assemblyAspects = GetAspects (assembly, assembly.MainModule);
 
             foreach (var module in assembly.Modules)
             {
@@ -60,7 +59,7 @@ namespace Shaspect.Builder
                     // properties
                     foreach (var property in type.Properties)
                     {
-                        var propAspects = typeAspects.NestWith (GetAspects (property, module));
+                        var propAspects = typeAspects.Union (GetAspects (property, module)).ToList();
                         if (property.GetMethod != null)
                         {
                             ProcessMethod (property.GetMethod, propAspects);
@@ -91,33 +90,32 @@ namespace Shaspect.Builder
         }
 
 
-        private List<AspectDeclaration> GetAllNestedTypesAspects (TypeDefinition type, List<AspectDeclaration> assemblyAspects)
+        private List<AspectDeclaration> GetAllNestedTypesAspects (TypeDefinition type, IEnumerable<AspectDeclaration> assemblyAspects)
         {
             var declaringType = type.DeclaringType;
 
-            List<AspectDeclaration> higherAspects;
+            List<AspectDeclaration> externalAspects;
             if (declaringType != null)
-                higherAspects= GetAllNestedTypesAspects (declaringType, assemblyAspects);
+                externalAspects= GetAllNestedTypesAspects (declaringType, assemblyAspects);
             else
-                higherAspects= assemblyAspects;
+                externalAspects= new List<AspectDeclaration> (assemblyAspects);
             
-            return higherAspects.NestWith (GetAspects (type, type.Module));
+            externalAspects.AddRange (GetAspects (type, type.Module));
+            return externalAspects;
         }
 
 
         private void ProcessMethod (MethodDefinition method, IEnumerable<AspectDeclaration> externalAspects)
         {
-            var aspects = externalAspects
-                .NestWith (GetAspects (method, method.Module))
-                .OrderByDescending (a => a);                  // Reverse order because aspects are injected in reverse order
+            var aspects = NestingStrategy.GetApplicableAspects (externalAspects.Union (GetAspects (method, method.Module)), method);
+            
+            // Reverse order because aspects are injected in reverse order
+            aspects = aspects.OrderByDescending (a => a.Order).ThenBy (a => a.NestingLevel);       
 
             foreach (var aspect in aspects)
             {
                 if ((aspect.Aspect.AttributeType.Resolve().Attributes & TypeAttributes.NestedPrivate) == TypeAttributes.NestedPrivate)
-                    throw new ApplicationException (String.Format ("Aspect {0} must be declared as public or internal.", aspect.Aspect.AttributeType));
-
-                if (!IsApplicableElementTarget (method, aspect))
-                    continue;
+                    throw new ApplicationException (String.Format ("Aspect {0} must be declared as public or internal class.", aspect.Aspect.AttributeType));
 
                 FieldDefinition aspectField, methodField;
                 initClassGenerator.BuildAspectInitCode (method, aspect.Aspect, out aspectField, out methodField);
@@ -125,32 +123,6 @@ namespace Shaspect.Builder
                 var methodInjector = new MethodAspectInjector (method, aspectField, methodField);
                 methodInjector.Inject();
             }
-        }
-
-
-        private bool IsApplicableElementTarget (MethodDefinition method, AspectDeclaration aspect)
-        {
-            var elemetTargets = aspect.ElementTargets;
-            if (elemetTargets == ElementTargets.Default)
-                return true;
-
-            bool isCCtor = method.IsStatic && method.IsConstructor;
-            bool isCtor = !method.IsStatic && method.IsConstructor;
-            bool isProperty = method.IsSpecialName && method.IsCompilerGenerated() && (method.Name.StartsWith ("get_") || method.Name.StartsWith ("set_"));
-
-            if ((elemetTargets & ElementTargets.StaticConstructor) == ElementTargets.StaticConstructor && isCCtor)
-                return true;
-
-            if ((elemetTargets & ElementTargets.InstanceConstructor) == ElementTargets.InstanceConstructor && isCtor)
-                return true;
-
-            if ((elemetTargets & ElementTargets.Property) == ElementTargets.Property && isProperty)
-                return true;
-
-            if ((elemetTargets & ElementTargets.Method) == ElementTargets.Method && !(isCtor || isCCtor || isProperty))
-                return true;
-
-            return false;
         }
 
 

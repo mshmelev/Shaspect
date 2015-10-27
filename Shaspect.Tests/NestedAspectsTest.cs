@@ -9,7 +9,7 @@ namespace Shaspect.Tests
     public sealed class NestedAspectsTest : IDisposable
     {
         private static readonly object sync = new object();
-        private static readonly HashSet<string> callsBag= new HashSet<string>();
+        private static readonly List<string> calls= new List<string>();
         
 
         /// <summary>
@@ -28,8 +28,7 @@ namespace Shaspect.Tests
 
             public override void OnEntry(MethodExecInfo methodExecInfo)
             {
-                lock (sync)
-                    callsBag.Add (callName);
+                calls.Add (callName);
             }
         }
 
@@ -125,6 +124,47 @@ namespace Shaspect.Tests
             }
         }
 
+
+        [SimpleAspect ("ComplexClass", ElementTargets = ElementTargets.Method | ElementTargets.Property)]
+        public class ComplexClass
+        {
+            [SimpleAspect ("NestedClass", ElementTargets = ElementTargets.Method, Exclude = true)]
+            public class NestedClass
+            {
+                public void SimpleMethod()
+                {
+                }
+
+
+                [SimpleAspect ("MethodWithAspect", ElementTargets = ElementTargets.Method)]
+                public void MethodWithAspect()
+                {
+                }
+
+                public int Prop { get; set; }
+            }
+
+
+
+            [SimpleAspect ("NestedClass", ElementTargets = ElementTargets.Method, Replace = true)]
+            public class NestedClass2
+            {
+                public void SimpleMethod()
+                {
+                }
+
+
+                [SimpleAspect ("MethodWithAspect", ElementTargets = ElementTargets.Method, Replace = true)]
+                public void MethodWithAspect()
+                {
+                }
+
+                public int Prop { get; set; }
+            }
+        }
+
+
+
         private readonly TestClass t;
 
 
@@ -132,7 +172,7 @@ namespace Shaspect.Tests
         {
             t = new TestClass();
             Monitor.Enter (sync);
-            callsBag.Clear();       // there's already something from ctor of TestClass
+            calls.Clear();       // there's already something from ctor of TestClass
         }
 
 
@@ -146,7 +186,7 @@ namespace Shaspect.Tests
         public void Aspect_On_Method_From_DeclaringType()
         {
             t.EmptyMethod();
-            Assert.Contains ("Class", callsBag);
+            Assert.Equal (new[] {"Class"}, calls);
         }
 
 
@@ -154,8 +194,7 @@ namespace Shaspect.Tests
         public void AspectOnMethod_AndDeclaringType()
         {
             t.AspectMethod();
-            Assert.Contains ("Class", callsBag);
-            Assert.Contains ("AspectMethod", callsBag);
+            Assert.Equal (new[] {"AspectMethod", "Class"}, calls);
         }
 
 
@@ -163,7 +202,7 @@ namespace Shaspect.Tests
         public void AspectOnProperty_FromDeclaringType()
         {
             t.Prop1 = 42;
-            Assert.Contains ("Class", callsBag);
+            Assert.Equal (new[] {"Class"}, calls);
         }
 
 
@@ -171,12 +210,12 @@ namespace Shaspect.Tests
         public void AspectOnProperty_AndDeclaringType()
         {
             t.AspectProperty = 42;
-            Assert.Contains ("Class", callsBag);
-            Assert.Contains ("AspectProperty", callsBag);
-            Assert.DoesNotContain ("AspectProperty_Get", callsBag);
+            Assert.Contains ("Class", calls);
+            Assert.Contains ("AspectProperty", calls);
+            Assert.DoesNotContain ("AspectProperty_Get", calls);
 
             int v = t.AspectProperty;
-            Assert.Contains ("AspectProperty_Get", callsBag);
+            Assert.Contains ("AspectProperty_Get", calls);
         }
 
 
@@ -184,7 +223,7 @@ namespace Shaspect.Tests
         public void Exclude_OnMethod()
         {
             t.ExcludeMethod();
-            Assert.Equal (0, callsBag.Count);
+            Assert.Empty (calls);
         }
 
 
@@ -192,11 +231,10 @@ namespace Shaspect.Tests
         public void Exclude_OnProperty()
         {
             t.ExcludeProperty = 42;
-            Assert.Equal (0, callsBag.Count);
+            Assert.Empty (calls);
 
             int i = t.ExcludeProperty;
-            Assert.Equal (1, callsBag.Count);
-            Assert.Contains ("ExcludeProperty_Get", callsBag);
+            Assert.Equal (new[] {"ExcludeProperty_Get"}, calls);
         }
 
 
@@ -204,13 +242,11 @@ namespace Shaspect.Tests
         public void Exclude_OnProperty_MultiAspects()
         {
             t.ExcludePropertyMultiAspects = 42;
-            Assert.Equal (1, callsBag.Count);
-            Assert.Contains ("ExcludePropertyMultiAspects2", callsBag);
+            Assert.Equal (new[] {"ExcludePropertyMultiAspects2"}, calls);
 
-            callsBag.Clear();
+            calls.Clear();
             int i = t.ExcludePropertyMultiAspects;
-            Assert.Equal (1, callsBag.Count);
-            Assert.Contains ("ExcludePropertyMultiAspects_Get", callsBag);
+            Assert.Equal (new[] {"ExcludePropertyMultiAspects_Get"}, calls);
         }
 
 
@@ -218,8 +254,7 @@ namespace Shaspect.Tests
         public void Replace_OnMethod()
         {
             t.ReplaceMethod();
-            Assert.Equal (1, callsBag.Count);
-            Assert.Contains ("ReplaceMethod", callsBag);
+            Assert.Equal (new[] {"ReplaceMethod"}, calls);
         }
 
 
@@ -227,9 +262,7 @@ namespace Shaspect.Tests
         public void Replace_OnMethod_Without_Having_Replacing_Aspect()
         {
             t.ReplaceMethod2();
-            Assert.Equal (2, callsBag.Count);
-            Assert.Contains ("ReplaceMethod2", callsBag);
-            Assert.Contains ("Class", callsBag);
+            Assert.Equal (new[] {"ReplaceMethod2", "Class"}, calls);
         }
 
 
@@ -237,14 +270,11 @@ namespace Shaspect.Tests
         public void Replace_OnProperty()
         {
             t.ReplaceProperty = 42;
-            Assert.Equal (1, callsBag.Count);
-            Assert.Contains ("ReplaceProperty", callsBag);
+            Assert.Equal (new[] {"ReplaceProperty"}, calls);
             
-            callsBag.Clear();
+            calls.Clear();
             int i = t.ReplaceProperty;
-            Assert.Equal (2, callsBag.Count);
-            Assert.Contains ("ReplaceProperty", callsBag);
-            Assert.Contains ("ReplaceProperty_Get", callsBag);
+            Assert.Equal (new[] {"ReplaceProperty_Get", "ReplaceProperty"}, calls);
         }
 
 
@@ -252,16 +282,16 @@ namespace Shaspect.Tests
         public void Replace_OnProperty_MultiAspects()
         {
             t.ReplacePropertyMultiAspects = 42;
-            Assert.Equal (3, callsBag.Count);
-            Assert.Contains ("Class", callsBag);
-            Assert.Contains ("ReplacePropertyMultiAspects", callsBag);
-            Assert.Contains ("ReplacePropertyMultiAspects2", callsBag);
+            Assert.Equal (3, calls.Count);
+            Assert.Contains ("Class", calls);
+            Assert.Contains ("ReplacePropertyMultiAspects", calls);
+            Assert.Contains ("ReplacePropertyMultiAspects2", calls);
 
-            callsBag.Clear();
+            calls.Clear();
             int i = t.ReplacePropertyMultiAspects;
-            Assert.Equal (2, callsBag.Count);
-            Assert.Contains ("ReplacePropertyMultiAspects_Get", callsBag);
-            Assert.Contains ("ReplacePropertyMultiAspects2_Get", callsBag);
+            Assert.Equal (2, calls.Count);
+            Assert.Contains ("ReplacePropertyMultiAspects_Get", calls);
+            Assert.Contains ("ReplacePropertyMultiAspects2_Get", calls);
         }
 
 
@@ -269,10 +299,10 @@ namespace Shaspect.Tests
         public void Aspect_On_Method_From_Declaring_Declaring_Type()
         {
             var t2 = new TestClass.NestedClass();
-            callsBag.Clear();
+            calls.Clear();
 
             t2.EmptyMethod();
-            Assert.Contains ("Class", callsBag);
+            Assert.Equal (new[] {"Class"}, calls);
         }
 
 
@@ -280,13 +310,53 @@ namespace Shaspect.Tests
         public void Aspect_On_Method_AND_From_Declaring_Declaring_Type()
         {
             var t2 = new TestClass.NestedClass();
-            callsBag.Clear();
+            calls.Clear();
 
             t2.AspectMethod();
-            Assert.Contains ("Class", callsBag);
-            Assert.Contains ("AspectMethod", callsBag);
-            Assert.Equal (2, callsBag.Count);
+            Assert.Equal (new[] {"AspectMethod", "Class"}, calls);
+        }
+		
+		
+        [Fact]
+        public void Target_Method_and_Exclude()
+        {
+            var t2 = new ComplexClass.NestedClass();
+            t2.SimpleMethod();
+            Assert.Empty (calls);
+
+            t2.Prop = 42;
+            Assert.Equal (new[] {"ComplexClass"}, calls);
         }
 
+
+        [Fact]
+        public void Target_Method_and_Exclude_Reinclude()
+        {
+            var t2 = new ComplexClass.NestedClass();
+            t2.MethodWithAspect();
+            Assert.Equal (new[] {"MethodWithAspect"}, calls);
+        }
+
+
+        [Fact]
+        public void Target_Method_and_Replace()
+        {
+            var t2 = new ComplexClass.NestedClass2();
+            t2.SimpleMethod();
+            Assert.Equal (new[] {"NestedClass"}, calls);
+
+            calls.Clear();
+            t2.Prop = 42;
+            Assert.Equal (new[] {"ComplexClass"}, calls);
+        }
+
+
+        [Fact]
+        public void Target_Method_and_Replace_Twice()
+        {
+            var t2 = new ComplexClass.NestedClass2();
+            t2.MethodWithAspect();
+            Assert.Equal (new[] {"MethodWithAspect"}, calls);
+        }
     }
 }
