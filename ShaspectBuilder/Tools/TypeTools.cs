@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Mono.Cecil;
 
@@ -69,6 +70,21 @@ namespace Shaspect.Builder.Tools
             }
 
             return null;
+        }
+
+
+        public static bool IsPropertyMethod (this MethodDefinition method)
+        {
+            return method.IsSpecialName && method.IsCompilerGenerated() && (method.Name.StartsWith ("get_") || method.Name.StartsWith ("set_"));
+        }
+
+
+        public static string GetPropertyNameByMethod (MethodDefinition method)
+        {
+            if (!method.IsPropertyMethod())
+                throw new ArgumentException("Not a property method", "method");
+
+            return method.Name.Substring (4);
         }
 
     }

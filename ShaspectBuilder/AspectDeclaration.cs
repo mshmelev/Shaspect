@@ -10,6 +10,8 @@ namespace Shaspect.Builder
         private int? order;
         private int? nestingLevel;
         private ElementTargets? elementTargets;
+        private string typeTargets;
+        private string memberTargets;
 
 
         public CustomAttribute Aspect { get; set; }
@@ -98,6 +100,30 @@ namespace Shaspect.Builder
         public string Name
         {
             get { return Aspect.AttributeType.FullName; }
+        }
+
+
+        public string TypeTargets
+        {
+            get
+            {
+                if (typeTargets == null)
+                    typeTargets = GetPropertyValue ("TypeTargets", "");
+
+                return typeTargets;
+            }
+        }
+
+
+        public string MemberTargets
+        {
+            get
+            {
+                if (memberTargets == null)
+                    memberTargets = GetPropertyValue ("MemberTargets", "");
+
+                return memberTargets;
+            }
         }
 
 

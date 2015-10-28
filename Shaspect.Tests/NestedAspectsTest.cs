@@ -164,6 +164,91 @@ namespace Shaspect.Tests
         }
 
 
+        [SimpleAspect ("ComplexClass2", TypeTargets = "*Class*")]
+        public class ComplexClass2
+        {
+            [SimpleAspect ("NestedClass", TypeTargets = "*2", Exclude = true)]
+            public class NestedClass
+            {
+                public class NestedClass2
+                {
+                    public void SimpleMethod()
+                    {
+                    }
+                }
+
+                public class NestedClass3
+                {
+                    public void SimpleMethod()
+                    {
+                    }
+                }
+            }
+        }
+
+
+        [SimpleAspect ("ComplexClass3", MemberTargets = "*1")]
+        public class ComplexClass3
+        {
+            [SimpleAspect ("NestedClass", MemberTargets = "*2", Exclude = true)]
+            public class NestedClass
+            {
+                public void SimpleMethod1()
+                {
+                }
+                public void SimpleMethod2()
+                {
+                }
+            }
+        }
+
+
+        [SimpleAspect ("ComplexClass4", ElementTargets = ElementTargets.Method | ElementTargets.Property, TypeTargets = "*Class*", MemberTargets = "*1")]
+        public class ComplexClass4
+        {
+            [SimpleAspect ("NestedClass", ElementTargets = ElementTargets.Property, TypeTargets = "*2", MemberTargets = "*2", Exclude = true)]
+            public class NestedClass
+            {
+                public class NestedClass1
+                {
+                    public void SimpleMethod()
+                    {
+                    }
+
+                    public void SimpleMethod1()
+                    {
+                    }
+
+                    public void SimpleMethod2()
+                    {
+                    }
+
+                    public int Prop1 { get; set; }
+                    public int Prop2 { get; set; }
+                }
+
+                public class NestedClass2
+                {
+                    public void SimpleMethod()
+                    {
+                    }
+
+                    public void SimpleMethod1()
+                    {
+                    }
+
+                    public void SimpleMethod2()
+                    {
+                    }
+
+                    public int Prop1 { get; set; }
+                    public int Prop2 { get; set; }
+                }
+            }
+        }
+
+
+
 
         private readonly TestClass t;
 
@@ -318,7 +403,7 @@ namespace Shaspect.Tests
 		
 		
         [Fact]
-        public void Target_Method_and_Exclude()
+        public void Target_Element_and_Exclude()
         {
             var t2 = new ComplexClass.NestedClass();
             t2.SimpleMethod();
@@ -330,7 +415,7 @@ namespace Shaspect.Tests
 
 
         [Fact]
-        public void Target_Method_and_Exclude_Reinclude()
+        public void Target_Element_and_Exclude_Reinclude()
         {
             var t2 = new ComplexClass.NestedClass();
             t2.MethodWithAspect();
@@ -339,7 +424,7 @@ namespace Shaspect.Tests
 
 
         [Fact]
-        public void Target_Method_and_Replace()
+        public void Target_Element_and_Replace()
         {
             var t2 = new ComplexClass.NestedClass2();
             t2.SimpleMethod();
@@ -352,11 +437,67 @@ namespace Shaspect.Tests
 
 
         [Fact]
-        public void Target_Method_and_Replace_Twice()
+        public void Target_Element_and_Replace_Twice()
         {
             var t2 = new ComplexClass.NestedClass2();
             t2.MethodWithAspect();
             Assert.Equal (new[] {"MethodWithAspect"}, calls);
         }
+
+
+        [Fact]
+        public void Target_Type_and_Exclude()
+        {
+            var t2 = new ComplexClass2.NestedClass.NestedClass2();
+            calls.Clear();
+            t2.SimpleMethod();
+            Assert.Empty (calls);
+
+            var t3 = new ComplexClass2.NestedClass.NestedClass3();
+            calls.Clear();
+            t3.SimpleMethod();
+            Assert.Equal (new[] {"ComplexClass2"}, calls);
+        }
+
+
+        [Fact]
+        public void Target_Member_and_Exclude()
+        {
+            var t2 = new ComplexClass3.NestedClass();
+            calls.Clear();
+            t2.SimpleMethod2();
+            Assert.Empty (calls);
+
+            t2.SimpleMethod1();
+            Assert.Equal (new[] {"ComplexClass3"}, calls);
+        }
+
+
+        [Fact]
+        public void Target_Member_Type_Element_and_Exclude()
+        {
+            var t2 = new ComplexClass4.NestedClass.NestedClass1();
+            calls.Clear();
+            t2.SimpleMethod();
+            t2.SimpleMethod2();
+            t2.Prop2 = 42;
+            Assert.Empty (calls);
+            
+            t2.SimpleMethod1();
+            t2.Prop1 = 42;
+            Assert.Equal (new[] {"ComplexClass4", "ComplexClass4"}, calls);
+
+            var t3 = new ComplexClass4.NestedClass.NestedClass2();
+            calls.Clear();
+            t2.SimpleMethod();
+            t3.SimpleMethod2();
+            t3.Prop2 = 42;
+            Assert.Empty (calls);
+
+            t3.SimpleMethod1();
+            t3.Prop1 = 42;
+            Assert.Equal (new[] {"ComplexClass4", "ComplexClass4"}, calls);
+        }
+
     }
 }
